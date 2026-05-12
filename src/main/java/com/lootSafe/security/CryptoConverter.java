@@ -1,5 +1,6 @@
 package com.lootSafe.security;
 
+import com.lootSafe.config.CryptoProperties;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
@@ -12,13 +13,12 @@ import java.util.Base64;
 public class CryptoConverter implements AttributeConverter<String, String> {
 
     private static final String ALGORITHM = "AES/ECB/PKCS5Padding";
-    private static final byte[] KEY = "LootSafeChave123".getBytes();
 
     @Override
     public String convertToDatabaseColumn(String plainText) {
         if (plainText == null) return null;
 
-        Key key = new SecretKeySpec(KEY, "AES");
+        Key key = new SecretKeySpec(CryptoProperties.chaveCriptografia.getBytes(), "AES");
         try {
             Cipher c = Cipher.getInstance(ALGORITHM);
             c.init(Cipher.ENCRYPT_MODE, key);
@@ -32,7 +32,7 @@ public class CryptoConverter implements AttributeConverter<String, String> {
     public String convertToEntityAttribute(String dbData) {
         if (dbData == null) return null;
 
-        Key key = new SecretKeySpec(KEY, "AES");
+        Key key = new SecretKeySpec(CryptoProperties.chaveCriptografia.getBytes(), "AES");
         try {
             Cipher c = Cipher.getInstance(ALGORITHM);
             c.init(Cipher.DECRYPT_MODE, key);
