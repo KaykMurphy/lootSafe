@@ -1,0 +1,51 @@
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: kayksantana133@gmail.com
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  config:
+    import: optional:file:.env[.properties]
+
+  flyway:
+    enabled: false
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  datasource:
+    url: jdbc:h2:mem:lootsafedb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 1234
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+lootsafe:
+    taxa_padrao: 0.10
+    seguranca:
+      chave-criptografia: "LootSafeChave123"
+      lootSafe-admin-api-key: ${LOOTSAFE_ADMIN_API_KEY}
+    prazos:
+      maximo-horas-teste: 72
+    access_token: ${LOOTSAFE_MP_TOKEN:token_padrao}
+    secret_key: ${SECRET_KEY}
+
+
+
+
+
+        
