@@ -18,8 +18,8 @@ import java.util.List;
 public class VendaAgendadorService {
 
     private final OfertaRepository ofertaRepository;
+    private final PagamentoService pagamentoService;
 
-    //cada hora
     @Scheduled(fixedRate = 3600000)
     @Transactional
     public void cancelarPixExpirados() {
@@ -33,10 +33,15 @@ public class VendaAgendadorService {
         );
 
         for (Oferta oferta : pixNaoPagos) {
+
+            if (oferta.getMercadoPagoId() != null) {
+                pagamentoService.cancelarPix(oferta.getMercadoPagoId());
+            }
+
             oferta.setStatusTransacao(StatusTransacao.CANCELADO);
             ofertaRepository.save(oferta);
+
             log.info("Oferta {} cancelada automaticamente pois o PIX expirou.", oferta.getId());
         }
     }
-
 }

@@ -11,9 +11,9 @@ import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,7 +28,7 @@ public class ModeracaoService {
     private final PagamentoService pagamentoService;
     private final OfertaMapper ofertaMapper;
 
-    public List<OfertaResponseDTO> listarOfertasEmMediacao(){
+    public List<OfertaResponseDTO> listarOfertasEmMediacao() {
         List<Oferta> listaOfertas = ofertaRepository.findAllByStatusTransacao(StatusTransacao.EM_MEDIACAO);
         return ofertaMapper.listaOfertasResponse(listaOfertas);
     }
@@ -37,39 +37,57 @@ public class ModeracaoService {
         Oferta oferta = ofertaRepository.findById(idOferta)
                 .orElseThrow(() -> new ResourceNotFoundException("Oferta não encontrada"));
 
-        if (oferta.getStatusTransacao() != StatusTransacao.EM_MEDIACAO){
-            throw new RuntimeException("Você não pode julgar uma oferta que não está em disputa.");
+        if (oferta.getStatusTransacao() != StatusTransacao.EM_MEDIACAO) {
+            throw new IllegalStateException("Você não pode julgar uma oferta que não está em disputa.");
         }
 
-        if (DecisaoMediacao.FAVOR_COMPRADOR.equals(decisao)){
+        if (DecisaoMediacao.FAVOR_COMPRADOR.equals(decisao)) {
             pagamentoService.reembolsoPagamento(oferta.getMercadoPagoId());
             oferta.setStatusTransacao(StatusTransacao.REEMBOLSADO);
+            log.info("Mediação da oferta {} resolvida a favor do comprador. Reembolso iniciado.", idOferta);
         }
 
-        if (DecisaoMediacao.FAVOR_VENDEDOR.equals(decisao)){
-            oferta.setStatusTransacao(StatusTransacao.FINALIZADO);
+        if (DecisaoMediacao.FAVOR_VENDEDOR.equals(decisao)) {
+
+            try {
+                pagamentoService.enviarParaVendedor(
+                        oferta.getChavePix(),
+                        oferta.getTipoChavePix(),
+                        oferta.getValorLiquido(),
+                        oferta.getId()
+                );
+                oferta.setStatusTransacao(StatusTransacao.FINALIZADO);
+                log.info("Mediação da oferta {} resolvida a favor do vendedor. Repasse de {} iniciado.",
+                        idOferta, oferta.getValorLiquido());
+
+            } catch (Exception e) {
+
+                log.error("Falha ao enviar repasse para o vendedor da oferta {}: {}", idOferta, e.getMessage());
+                throw new RuntimeException(
+                        "Decisão registrada, mas o repasse para o vendedor falhou: " + e.getMessage(), e
+                );
+            }
         }
 
         Oferta mediacaoResolvida = ofertaRepository.save(oferta);
-
         return ofertaMapper.toResponseDTO(mediacaoResolvida);
     }
 
-    public Page<OfertaResponseDTO> listarTodasAsOfertas(Pageable paginacao){
-        Page<Oferta> paginaDeOfertas = ofertaRepository.findAll(paginacao);
-        return paginaDeOfertas.map(oferta -> ofertaMapper.toResponseDTO(oferta));
+    public Page<OfertaResponseDTO> listarTodasAsOfertas(Pageable paginacao) {
+        return ofertaRepository.findAll(paginacao)
+                .map(ofertaMapper::toResponseDTO);
     }
 
     public OfertaResponseDTO cancelarManual(UUID idOferta, boolean forcarReembolso) throws MPException, MPApiException {
-
         Oferta oferta = ofertaRepository.findById(idOferta)
                 .orElseThrow(() -> new ResourceNotFoundException("Oferta não encontrada"));
 
-        if (oferta.getStatusTransacao() != StatusTransacao.PAGO_RETIDO && oferta.getStatusTransacao() != StatusTransacao.EM_MEDIACAO){
-            throw new RuntimeException("A Oferta não pode ser cancelada neste status");
+        if (oferta.getStatusTransacao() != StatusTransacao.PAGO_RETIDO
+                && oferta.getStatusTransacao() != StatusTransacao.EM_MEDIACAO) {
+            throw new IllegalStateException("A oferta não pode ser cancelada neste status");
         }
 
-        if (forcarReembolso){
+        if (forcarReembolso) {
             pagamentoService.reembolsoPagamento(oferta.getMercadoPagoId());
         }
 
@@ -79,15 +97,12 @@ public class ModeracaoService {
         return ofertaMapper.toResponseDTO(ofertaSalva);
     }
 
-
     public BigDecimal calcularLucroPlataforma() {
 
-        BigDecimal lucro = ofertaRepository.calcularLucroTotalPorStatus(StatusTransacao.FINALIZADO);
+        BigDecimal lucro = ofertaRepository.calcularLucroTotalPorStatuses(
+                List.of(StatusTransacao.FINALIZADO, StatusTransacao.CONCLUIDO)
+        );
 
-        if (lucro == null) {
-            return BigDecimal.ZERO;
-        }
-
-        return lucro;
+        return lucro != null ? lucro : BigDecimal.ZERO;
     }
 }

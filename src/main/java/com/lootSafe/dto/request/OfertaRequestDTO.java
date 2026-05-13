@@ -35,11 +35,14 @@ public record OfertaRequestDTO(
         @Email
         String emailVendedor,
 
+        @NotBlank
+        @Email
+        String emailComprador,
+
         @NotNull
         TipoChavePix tipoChavePix,
 
         @NotBlank
         String chavePix
-){
 
-}
+) {}

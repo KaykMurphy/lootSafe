@@ -28,12 +28,10 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         String chaveEnviada = request.getHeader("X-API-KEY");
 
-        if (chaveEnviada == null || !chaveEnviada.equals(chaveEnviada)) {
+        if (chaveEnviada == null || !chaveEnviada.equals(adminApiKey)) {
 
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
             response.setContentType("text/plain;charset=UTF-8");
-
             response.getWriter().write("Acesso Negado: Chave de API inválida");
 
             return;

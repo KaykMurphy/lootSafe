@@ -3,6 +3,7 @@ package com.lootSafe.security;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.HmacUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 @Slf4j
@@ -25,7 +26,10 @@ public class WebhookSignatureUtil {
 
             String hashGerado = new HmacUtils("HmacSHA256", secret).hmacHex(manifest);
 
-            return MessageDigest.isEqual(hashGerado.getBytes(), v1.getBytes());
+            return MessageDigest.isEqual(
+                    hashGerado.getBytes(StandardCharsets.UTF_8),
+                    v1.getBytes(StandardCharsets.UTF_8)
+            );
 
         } catch (Exception e) {
             log.error("Falha critica na validacao da assinatura: {}", e.getMessage());

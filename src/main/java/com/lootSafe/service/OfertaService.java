@@ -12,6 +12,7 @@ import com.lootSafe.repository.EmailService;
 import com.lootSafe.repository.OfertaRepository;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.resources.payment.Payment;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -65,98 +67,105 @@ public class OfertaService {
         }
 
         Oferta ofertaSalva = ofertaRepository.save(oferta);
-
         return ofertaMapper.toResponseDTO(ofertaSalva);
     }
 
     public OfertaResponseDTO buscarPorId(UUID id) {
-
         Oferta response = ofertaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Oferta não encontrada"));
-
         return ofertaMapper.toResponseDTO(response);
     }
 
     public Page<OfertaResponseDTO> listarTodas(Pageable pageable) {
-
         return ofertaRepository.findAll(pageable)
-                .map(oferta -> ofertaMapper.toResponseDTO(oferta));
+                .map(ofertaMapper::toResponseDTO);
     }
 
     public void deletarOferta(UUID id) {
-
-        Oferta ofertaEncontrada = ofertaRepository.findById(id)
+        Oferta oferta = ofertaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Oferta não encontrada"));
 
-        ofertaRepository.delete(ofertaEncontrada);
+        List<StatusTransacao> statusBloqueados = List.of(
+                StatusTransacao.PAGO_RETIDO,
+                StatusTransacao.CONCLUIDO,
+                StatusTransacao.EM_MEDIACAO
+        );
+
+        if (statusBloqueados.contains(oferta.getStatusTransacao())) {
+            throw new IllegalStateException(
+                    "Não é possível deletar uma oferta com status: " + oferta.getStatusTransacao()
+                            + ". Cancele-a antes de remover."
+            );
+        }
+
+        ofertaRepository.delete(oferta);
     }
 
     public OfertaResponseDTO atualizarOferta(UUID id, OfertaAtualizarDTO atualizarDTO) {
-
         Oferta oferta = ofertaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Oferta não encontrada"));
 
         ofertaMapper.atualizarOfertaDeDTO(atualizarDTO, oferta);
 
-        BigDecimal taxa = atualizarDTO.valorBruto().multiply(taxaPadrao);
-        BigDecimal valorLiquido = atualizarDTO.valorBruto().subtract(taxa);
-
-        oferta.setTaxaPlataforma(taxa);
-        oferta.setValorLiquido(valorLiquido);
+        if (atualizarDTO.valorBruto() != null) {
+            BigDecimal taxa = atualizarDTO.valorBruto().multiply(taxaPadrao);
+            BigDecimal valorLiquido = atualizarDTO.valorBruto().subtract(taxa);
+            oferta.setTaxaPlataforma(taxa);
+            oferta.setValorLiquido(valorLiquido);
+        }
 
         Oferta ofertaAtualizada = ofertaRepository.save(oferta);
-
         return ofertaMapper.toResponseDTO(ofertaAtualizada);
     }
 
+    @Transactional
     public void processarNotificacaoPagamento(Long mercadoPagoId) {
         try {
             Payment pagamento = pagamentoService.consultarPagamento(mercadoPagoId);
 
             if ("approved".equals(pagamento.getStatus())) {
                 Oferta oferta = ofertaRepository.findByMercadoPagoId(mercadoPagoId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Oferta não encontrada para o pagamento MP: " + mercadoPagoId));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Oferta não encontrada para o pagamento MP: " + mercadoPagoId));
 
                 if (oferta.getStatusTransacao() == StatusTransacao.AGUARDANDO_PAGAMENTO) {
                     oferta.setDataLimiteLiberacao(LocalDateTime.now().plusHours(oferta.getPrazoTesteHoras()));
-                    oferta.setStatusTransacao(StatusTransacao.CONCLUIDO);
 
+                    oferta.setStatusTransacao(StatusTransacao.PAGO_RETIDO);
                     ofertaRepository.save(oferta);
 
-                    EmailDetails detalhes = getEmailDetails(oferta);
+                    emailService.enviarMailSimples(getEmailDetails(oferta));
 
-                    emailService.enviarMailSimples(detalhes);
+                    oferta.setStatusTransacao(StatusTransacao.CONCLUIDO);
+                    ofertaRepository.save(oferta);
 
-                    log.info("Oferta {} concluída com sucesso! Produto liberado e e-mail enviado.", oferta.getId());
+                    log.info("Oferta {} concluída. Produto liberado e e-mail enviado.", oferta.getId());
                 }
             } else {
-                log.info("Pagamento {} tem status: {}. Nenhuma ação tomada.", mercadoPagoId, pagamento.getStatus());
+                log.info("Pagamento {} status: {}. Nenhuma ação.", mercadoPagoId, pagamento.getStatus());
             }
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao processar a notificação de pagamento: " + e.getMessage(), e);
+            throw new RuntimeException("Erro ao processar notificação de pagamento: " + e.getMessage(), e);
         }
     }
 
     public OfertaResponseDTO abrirMediacao(UUID idOferta) {
-
         Oferta oferta = ofertaRepository.findById(idOferta)
                 .orElseThrow(() -> new ResourceNotFoundException("Oferta não encontrada"));
 
-        if (oferta.getStatusTransacao() != StatusTransacao.CONCLUIDO){
+        if (oferta.getStatusTransacao() != StatusTransacao.CONCLUIDO) {
             throw new RuntimeException("A oferta não está em periodo de teste");
         }
 
-        if (LocalDateTime.now().isAfter(oferta.getDataLimiteLiberacao())){
+        if (LocalDateTime.now().isAfter(oferta.getDataLimiteLiberacao())) {
             throw new RuntimeException("O prazo de garantia já expirou.");
         }
 
         oferta.setStatusTransacao(StatusTransacao.EM_MEDIACAO);
 
-        ofertaRepository.save(oferta);
-
-        return ofertaMapper.toResponseDTO(oferta);
+        Oferta ofertaSalva = ofertaRepository.save(oferta);
+        return ofertaMapper.toResponseDTO(ofertaSalva);
     }
-
 
     private static @NonNull EmailDetails getEmailDetails(Oferta oferta) {
         String textoEmail = """
@@ -178,11 +187,10 @@ public class OfertaService {
                 oferta.getId()
         );
 
-        EmailDetails detalhes = new EmailDetails(
-                oferta.getEmailVendedor(),
+        return new EmailDetails(
+                oferta.getEmailComprador(),
                 "LootSafe - Sua conta foi liberada!",
                 textoEmail
         );
-        return detalhes;
     }
 }

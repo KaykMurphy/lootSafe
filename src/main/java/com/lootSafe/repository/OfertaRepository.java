@@ -15,6 +15,7 @@ import java.util.UUID;
 
 @Repository
 public interface OfertaRepository extends JpaRepository<Oferta, UUID> {
+
     Optional<Oferta> findByMercadoPagoId(Long mercadoPagoId);
 
     List<Oferta> findAllByStatusTransacaoAndDataLimiteLiberacaoBefore(
@@ -24,8 +25,9 @@ public interface OfertaRepository extends JpaRepository<Oferta, UUID> {
 
     List<Oferta> findAllByStatusTransacao(StatusTransacao status);
 
-    @Query("SELECT SUM(o.taxaPlataforma) FROM Oferta o WHERE o.statusTransacao = :status")
-    BigDecimal calcularLucroTotalPorStatus(@Param("status") StatusTransacao status);
+
+    @Query("SELECT SUM(o.taxaPlataforma) FROM Oferta o WHERE o.statusTransacao IN :statuses")
+    BigDecimal calcularLucroTotalPorStatuses(@Param("statuses") List<StatusTransacao> statuses);
 
     List<Oferta> findAllByStatusTransacaoAndDataCriacaoBefore(
             StatusTransacao status,

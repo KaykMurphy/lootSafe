@@ -34,6 +34,7 @@ public class Oferta {
 
     @Column(columnDefinition = "TEXT")
     private String copiaEColaPix;
+
     private Long mercadoPagoId;
 
     @Column(nullable = false)
@@ -60,6 +61,9 @@ public class Oferta {
     private String emailVendedor;
 
     @Column(nullable = false)
+    private String emailComprador;
+
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private TipoChavePix tipoChavePix;
 
@@ -77,9 +81,4 @@ public class Oferta {
         this.dataCriacao = LocalDateTime.now();
         this.dataExpiracaoLink = LocalDateTime.now().plusHours(48);
     }
-
-
-
-
-
 }
