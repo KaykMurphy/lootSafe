@@ -1,6 +1,6 @@
-package com.lootSafe.model;
+package com.lootsafe.model;
 
-import com.lootSafe.enums.AutorMensagem;
+import com.lootsafe.enums.MessageAuthor;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -9,27 +9,27 @@ import java.util.UUID;
 
 @Data
 @Entity
-public class MensagemChat {
+public class ChatMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne
-    private Oferta oferta;
+    private Offer offer;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private AutorMensagem autorMensagem;
+    private MessageAuthor messageAuthor;
 
     @Column(columnDefinition = "TEXT")
-    private String texto;
+    private String content;
 
-    private LocalDateTime dataEnvio;
+    private LocalDateTime sentAt;
 
     @PrePersist
     public void onPrePersist() {
-        this.dataEnvio = LocalDateTime.now();
+        this.sentAt = LocalDateTime.now();
     }
 
 }
