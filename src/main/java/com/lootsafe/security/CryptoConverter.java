@@ -1,6 +1,6 @@
-package com.lootSafe.security;
+package com.lootsafe.security;
 
-import com.lootSafe.config.CryptoProperties;
+import com.lootsafe.config.CryptoProperties;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
@@ -27,7 +27,7 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             new SecureRandom().nextBytes(iv);
 
             SecretKeySpec keySpec = new SecretKeySpec(
-                    CryptoProperties.chaveCriptografia.getBytes(StandardCharsets.UTF_8), "AES"
+                    CryptoProperties.encryptionKey.getBytes(StandardCharsets.UTF_8), "AES"
             );
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -42,7 +42,7 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             return Base64.getEncoder().encodeToString(combined);
 
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao criptografar dado", e);
+            throw new RuntimeException("Failed to encrypt data", e);
         }
     }
 
@@ -60,7 +60,7 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             System.arraycopy(combined, IV_LENGTH_BYTES, cipherText, 0, cipherText.length);
 
             SecretKeySpec keySpec = new SecretKeySpec(
-                    CryptoProperties.chaveCriptografia.getBytes(StandardCharsets.UTF_8), "AES"
+                    CryptoProperties.encryptionKey.getBytes(StandardCharsets.UTF_8), "AES"
             );
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -69,7 +69,7 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
 
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao descriptografar dado", e);
+            throw new RuntimeException("Failed to decrypt data", e);
         }
     }
 }

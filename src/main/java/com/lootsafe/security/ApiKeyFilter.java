@@ -1,4 +1,4 @@
-package com.lootSafe.security;
+package com.lootsafe.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,27 +13,30 @@ import java.io.IOException;
 @Component
 public class ApiKeyFilter extends OncePerRequestFilter {
 
-    @Value("${lootsafe.seguranca.lootSafe-admin-api-key}")
+    @Value("${lootsafe.security.admin-api-key}")
     private String adminApiKey;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        String url = request.getRequestURI();
-
-        if (!url.startsWith("/api/moderacao")) {
+        if (request.getMethod().equalsIgnoreCase("OPTIONS")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String chaveEnviada = request.getHeader("X-API-KEY");
+        String url = request.getRequestURI();
 
-        if (chaveEnviada == null || !chaveEnviada.equals(adminApiKey)) {
+        if (!url.startsWith("/api/mediation")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
+        String providedApiKey = request.getHeader("X-API-KEY");
+
+        if (providedApiKey == null || !providedApiKey.equals(adminApiKey)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("text/plain;charset=UTF-8");
-            response.getWriter().write("Acesso Negado: Chave de API inválida");
-
+            response.getWriter().write("Access denied: invalid API key");
             return;
         }
 

@@ -7,15 +7,15 @@
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.6</version>
 		<relativePath/> </parent>
-	<groupId>com.lootSafe</groupId>
-	<artifactId>lootSafe</artifactId>
+	<groupId>com.lootsafe</groupId>
+	<artifactId>lootsafe</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>lootSafe</name>
+	<name>lootsafe</name>
 	<description>LootSafe API</description>
 
 	<properties>
 		<java.version>17</java.version>
-		<start-class>com.lootSafe.LootSafeApplication</start-class>
+		<start-class>com.lootsafe.LootSafeApplication</start-class>
 	</properties>
 
 	<dependencies>
@@ -100,12 +100,6 @@
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
 			<version>1.16.0</version>
-		</dependency>
-		<!-- Source: https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-mail</artifactId>
-			<scope>compile</scope>
 		</dependency>
 	</dependencies>
 

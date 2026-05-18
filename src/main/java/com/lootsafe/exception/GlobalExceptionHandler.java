@@ -1,4 +1,4 @@
-package com.lootSafe.exception;
+package com.lootsafe.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -47,5 +47,17 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);    }
+
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedOperation(UnsupportedOperationException ex) {
+
+        ErrorResponse errorResponse = ErrorResponse.of(
+                ex.getMessage(),
+                "NOT_IMPLEMENTED",
+                List.of()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_IMPLEMENTED);
+    }
 
 }

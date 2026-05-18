@@ -1,9 +1,9 @@
-package com.lootSafe.controller;
+package com.lootsafe.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lootSafe.security.WebhookSignatureUtil;
-import com.lootSafe.service.OfertaService;
+import com.lootsafe.security.WebhookSignatureUtil;
+import com.lootsafe.service.OfferService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,26 +16,26 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/webhooks")
 public class WebhookController {
 
-    @Value("${lootsafe.secret_key}")
+    @Value("${lootsafe.secret-key}")
     private String webhookSecret;
 
     private final TaskExecutor taskExecutor;
-    private final OfertaService ofertaService;
+    private final OfferService offerService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public WebhookController(@Qualifier("webhookTaskExecutor") TaskExecutor taskExecutor, OfertaService ofertaService) {
+    public WebhookController(@Qualifier("webhookTaskExecutor") TaskExecutor taskExecutor, OfferService offerService) {
         this.taskExecutor = taskExecutor;
-        this.ofertaService = ofertaService;
+        this.offerService = offerService;
     }
 
     @PostMapping("/mercadopago")
-    public ResponseEntity<Void> receberNotificacaoMP(
-            @RequestBody String payloadCru,
-            @RequestHeader(value = "x-signature", required = false) String assinatura,
+    public ResponseEntity<Void> receiveMercadoPagoNotification(
+            @RequestBody String rawPayload,
+            @RequestHeader(value = "x-signature", required = false) String signature,
             @RequestHeader(value = "x-request-id", required = false) String requestId,
             @RequestParam(value = "data.id", required = false) String dataId) {
 
-        if (assinatura == null || requestId == null || dataId == null) {
+        if (signature == null || requestId == null || dataId == null) {
             log.warn("Notificacao ignorada: Parametros de seguranca ausentes.");
             return ResponseEntity.status(400).build();
         }
@@ -43,20 +43,20 @@ public class WebhookController {
         taskExecutor.execute(() -> {
             log.info("Processando webhook em background...");
 
-            boolean isValido = WebhookSignatureUtil.isValidWebhook(assinatura, requestId, dataId, webhookSecret);
+            boolean isValid = WebhookSignatureUtil.isValidWebhook(signature, requestId, dataId, webhookSecret);
 
-            if (isValido) {
+            if (isValid) {
                 log.info("Assinatura verificada com sucesso.");
 
                 try {
-                    JsonNode jsonNode = objectMapper.readTree(payloadCru);
-                    String tipo = jsonNode.has("type") ? jsonNode.get("type").asText() : "";
+                    JsonNode jsonNode = objectMapper.readTree(rawPayload);
+                    String eventType = jsonNode.has("type") ? jsonNode.get("type").asText() : "";
 
-                    if ("payment".equals(tipo)) {
-                        Long pagamentoId = Long.parseLong(dataId);
-                        ofertaService.processarNotificacaoPagamento(pagamentoId);
+                    if ("payment".equals(eventType)) {
+                        Long paymentId = Long.parseLong(dataId);
+                        offerService.processPaymentNotification(paymentId);
                     } else {
-                        log.info("Tipo de evento ignorado: {}", tipo);
+                        log.info("Tipo de evento ignorado: {}", eventType);
                     }
                 } catch (Exception e) {
                     log.error("Erro ao processar JSON: {}", e.getMessage());

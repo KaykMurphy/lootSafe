@@ -1,4 +1,4 @@
-package com.lootSafe.exception;
+package com.lootsafe.exception;
 
 public class ResourceNotFoundException extends RuntimeException{
     public ResourceNotFoundException(String message){

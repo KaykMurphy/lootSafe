@@ -1,4 +1,4 @@
-package com.lootSafe.security;
+package com.lootsafe.security;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.HmacUtils;
@@ -24,10 +24,10 @@ public class WebhookSignatureUtil {
 
             String manifest = "id:" + dataId + ";request-id:" + requestId + ";ts:" + ts + ";";
 
-            String hashGerado = new HmacUtils("HmacSHA256", secret).hmacHex(manifest);
+            String generatedHash = new HmacUtils("HmacSHA256", secret).hmacHex(manifest);
 
             return MessageDigest.isEqual(
-                    hashGerado.getBytes(StandardCharsets.UTF_8),
+                    generatedHash.getBytes(StandardCharsets.UTF_8),
                     v1.getBytes(StandardCharsets.UTF_8)
             );
 

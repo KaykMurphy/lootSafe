@@ -1,4 +1,4 @@
-package com.lootSafe.exception;
+package com.lootsafe.exception;
 
 import java.time.LocalDateTime;
 import java.util.List;

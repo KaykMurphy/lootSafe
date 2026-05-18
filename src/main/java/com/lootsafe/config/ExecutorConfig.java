@@ -1,4 +1,4 @@
-package com.lootSafe.config;
+package com.lootsafe.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
