@@ -5,7 +5,9 @@ import com.lootsafe.enums.MediationDecision;
 import com.lootsafe.enums.TransactionStatus;
 import com.lootsafe.exception.ResourceNotFoundException;
 import com.lootsafe.mapper.OfferMapper;
+import com.lootsafe.model.EmailDetails;
 import com.lootsafe.model.Offer;
+import com.lootsafe.repository.EmailService;
 import com.lootsafe.repository.OfferRepository;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +30,7 @@ public class MediationService {
     private final OfferRepository offerRepository;
     private final PaymentService paymentService;
     private final OfferMapper offerMapper;
+    private final EmailService emailService;
 
     public List<OfferResponseDTO> listOffersInMediation() {
         List<Offer> offers = offerRepository.findAllByTransactionStatus(TransactionStatus.IN_MEDIATION);
@@ -129,12 +133,22 @@ public class MediationService {
     }
 
     public BigDecimal calculatePlatformProfit() {
-
         BigDecimal profit = offerRepository.calculateTotalPlatformProfitByStatuses(
                 List.of(TransactionStatus.SETTLED, TransactionStatus.COMPLETED)
         );
-
         return profit != null ? profit : BigDecimal.ZERO;
+    }
+
+    private EmailDetails getEmailDetails(Offer offer) {
+        String body = String.format("""
+                Hello! Your payment was approved.
+                Product: %s
+                Login: %s | Password: %s
+                Room link: https://lootsafe.com.br/orders/%s
+                """, offer.getProductCategory(), offer.getCredentialLogin(),
+                offer.getCredentialPassword(), offer.getId());
+
+        return new EmailDetails(offer.getBuyerEmail(), "LootSafe - Product Released!", body);
     }
 
     public OfferResponseDTO dropMediationByBuyer(UUID offerId) {
@@ -176,12 +190,17 @@ public class MediationService {
         }
 
         offer.setTransactionStatus(TransactionStatus.PAYMENT_HELD);
-
-        offer.setReleaseDeadline(java.time.LocalDateTime.now().plusHours(offer.getTrialPeriodHours()));
-
-        log.info("SIMULAÇÃO: Pagamento da oferta {} aprovado manualmente para testes.", offerId);
+        offer.setReleaseDeadline(LocalDateTime.now().plusHours(offer.getTrialPeriodHours()));
 
         Offer savedOffer = offerRepository.save(offer);
+
+        if (offer.getBuyerEmail() != null) {
+            emailService.sendSimpleEmail(getEmailDetails(offer));
+        } else {
+            log.warn("SIMULAÇÃO: Oferta {} não possui buyerEmail definido, e-mail não enviado.", offerId);
+        }
+
+        log.info("SIMULAÇÃO: Pagamento da oferta {} aprovado manualmente para testes.", offerId);
         return offerMapper.toResponseDTO(savedOffer);
     }
 }
