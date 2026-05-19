@@ -68,6 +68,12 @@ public class MediationController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/{id}/drop")
+    public ResponseEntity<OfferResponseDTO> dropMediation(@PathVariable("id") UUID id) {
+        OfferResponseDTO response = mediationService.dropMediationByBuyer(id);
+        return ResponseEntity.ok(response);
+    }
+
     // TODO: Remove before production. Test-only endpoint.
     @PostMapping("/{id}/simulate-payment")
     public ResponseEntity<OfferResponseDTO> simulateApprovedPayment(@PathVariable("id") UUID id) {

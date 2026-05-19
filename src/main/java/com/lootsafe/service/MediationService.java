@@ -106,6 +106,35 @@ public class MediationService {
         return profit != null ? profit : BigDecimal.ZERO;
     }
 
+    public OfferResponseDTO dropMediationByBuyer(UUID offerId) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+
+        TransactionStatus currentStatus = offer.getTransactionStatus();
+
+        if (currentStatus != TransactionStatus.IN_MEDIATION) {
+            throw new IllegalStateException("Apenas ofertas em mediação podem ser canceladas pelo comprador");
+        }
+
+        try {
+            paymentService.transferToSeller(
+                    offer.getPixKey(),
+                    offer.getPixKeyType(),
+                    offer.getNetAmount(),
+                    offer.getId()
+            );
+
+            log.info("Comprador desistiu. Repasse de {} para vendedor iniciado.", offer.getNetAmount());
+            offer.setTransactionStatus(TransactionStatus.SETTLED);
+        } catch (Exception e) {
+            log.error("Falha ao enviar repasse para o vendedor após o comprador desistir da mediação. offerId: {}", offerId, e);
+            throw new RuntimeException("Falha no repasse automático. A oferta permanecerá em mediação para resolução manual.", e);
+        }
+
+        Offer offerSaved = offerRepository.save(offer);
+        return offerMapper.toResponseDTO(offerSaved);
+    }
+
     // TODO: Remove before production. Test-only endpoint.
     public OfferResponseDTO simulateApprovedPayment(UUID offerId) {
         Offer offer = offerRepository.findById(offerId)
