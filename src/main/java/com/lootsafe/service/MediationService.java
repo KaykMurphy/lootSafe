@@ -88,20 +88,41 @@ public class MediationService {
                 .map(offerMapper::toResponseDTO);
     }
 
-    public OfferResponseDTO cancelManually(UUID offerId, boolean forceRefund) throws MPException, MPApiException {
+    public OfferResponseDTO cancelManually(UUID offerId, boolean forceRefund) {
         Offer offer = offerRepository.findById(offerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
 
-        if (offer.getTransactionStatus() != TransactionStatus.PAYMENT_HELD
-                && offer.getTransactionStatus() != TransactionStatus.IN_MEDIATION) {
-            throw new IllegalStateException("The offer cannot be cancelled in its current status.");
+        TransactionStatus currentStatus = offer.getTransactionStatus();
+        if (currentStatus != TransactionStatus.PENDING_PAYMENT
+                && currentStatus != TransactionStatus.PAYMENT_HELD
+                && currentStatus != TransactionStatus.IN_MEDIATION) {
+            throw new IllegalStateException("The offer cannot be cancelled/refunded in its current status.");
         }
 
-        if (forceRefund) {
-            paymentService.refundPayment(offer.getMercadoPagoPaymentId());
+        if (currentStatus == TransactionStatus.PENDING_PAYMENT) {
+            if (offer.getMercadoPagoPaymentId() != null) {
+                try {
+                    paymentService.cancelPix(offer.getMercadoPagoPaymentId());
+                } catch (MPException | MPApiException e) {
+                    log.warn("Falha ao cancelar Pix no MP (provável expiração natural). Ignorando e prosseguindo.");
+                }
+            }
+            offer.setTransactionStatus(TransactionStatus.CANCELLED);
+
+        } else if (currentStatus == TransactionStatus.PAYMENT_HELD || currentStatus == TransactionStatus.IN_MEDIATION) {
+            if (!forceRefund) {
+                throw new IllegalStateException("Pagamento já processado. É obrigatório usar forceRefund=true para estornar.");
+            }
+
+            try {
+                paymentService.refundPayment(offer.getMercadoPagoPaymentId());
+                offer.setTransactionStatus(TransactionStatus.REFUNDED);
+            } catch (MPException | MPApiException e) {
+                log.error("Falha crítica ao reembolsar valor retido. offerId: {}", offerId, e);
+                throw new RuntimeException("Não foi possível processar o reembolso automático.", e);
+            }
         }
 
-        offer.setTransactionStatus(TransactionStatus.CANCELLED);
         Offer savedOffer = offerRepository.save(offer);
 
         return offerMapper.toResponseDTO(savedOffer);
