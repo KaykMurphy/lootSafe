@@ -15,7 +15,7 @@ import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentPointOfInteraction;
 import com.mercadopago.resources.payment.PaymentTransactionData;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -135,7 +135,7 @@ public class OfferService {
                 }
             }
         } catch (Exception e) {
-            log.error("Erro no Webhook: {}", e.getMessage());
+            log.error("Erro no Webhook ao processar pagamento {}: {}", mercadoPagoPaymentId, e.getMessage(), e);
         }
     }
 
