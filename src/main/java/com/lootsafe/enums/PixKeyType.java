@@ -5,6 +5,7 @@ public enum PixKeyType {
     CPF,
     EMAIL,
     PHONE,
+    CNPJ,
     RANDOM_KEY
 
 }

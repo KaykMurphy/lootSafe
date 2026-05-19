@@ -1,5 +1,6 @@
 package com.lootsafe.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lootsafe.enums.PixKeyType;
 import com.lootsafe.model.Offer;
 import com.mercadopago.MercadoPagoConfig;
@@ -12,15 +13,21 @@ import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentRefund;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class PaymentService {
 
@@ -118,8 +125,56 @@ public class PaymentService {
     }
 
     public void transferToSeller(String pixKey, PixKeyType pixKeyType, BigDecimal amount, UUID offerId) {
-        throw new UnsupportedOperationException(
-                "Automatic PIX transfer has not been implemented yet for offer " + offerId
-        );
+        MercadoPagoConfig.setAccessToken(accessToken);
+
+        try {
+            String mpKeyType = mapToMercadoPagoKeyType(pixKeyType);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("amount", amount);
+            payload.put("external_reference", offerId.toString());
+
+            Map<String, String> receiverAddress = new HashMap<>();
+            receiverAddress.put("pix_key", pixKey);
+            receiverAddress.put("pix_key_type", mpKeyType);
+            payload.put("receiver_address", receiverAddress);
+
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonBody = mapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.mercadopago.com/v1/transfers"))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Content-Type", "application/json")
+                    .header("x-idempotency-key", UUID.randomUUID().toString())
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+            HttpClient client = HttpClient.newHttpClient();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("Transferência Pix enviada para o vendedor da oferta {}", offerId);
+            } else {
+                throw new RuntimeException("Falha na API do Mercado Pago ao transferir o valor. HTTP " +
+                        response.statusCode() + " - Body: " + response.body());
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erro interno ao processar repasse ao vendedor: " + e.getMessage(), e);
+        }
+    }
+
+    private String mapToMercadoPagoKeyType(PixKeyType type) {
+        if (type == null) {
+            return "RANDOM";
+        }
+
+        return switch (type) {
+            case CPF -> "CPF";
+            case CNPJ -> "CNPJ";
+            case EMAIL -> "EMAIL";
+            case PHONE -> "PHONE";
+            default -> "RANDOM";
+        };
     }
 }
