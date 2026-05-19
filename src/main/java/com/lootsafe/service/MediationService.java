@@ -42,13 +42,25 @@ public class MediationService {
         }
 
         if (MediationDecision.BUYER_WINS.equals(decision)) {
-            paymentService.refundPayment(offer.getMercadoPagoPaymentId());
-            offer.setTransactionStatus(TransactionStatus.REFUNDED);
-            log.info("Mediação da oferta {} resolvida a favor do comprador. Reembolso iniciado.", offerId);
+            try {
+                paymentService.refundPayment(offer.getMercadoPagoPaymentId());
+                offer.setTransactionStatus(TransactionStatus.REFUNDED);
+                log.info("Mediação da oferta {} resolvida a favor do comprador. Reembolso iniciado.", offerId);
+            } catch (MPException | MPApiException e) {
+                log.error(
+                        "A mediação foi decidida a favor do comprador, mas o reembolso automático via API falhou. offerId: {}",
+                        offer.getId(),
+                        e
+                );
+                throw new RuntimeException(
+                        "Falha no reembolso automático. A oferta permanecerá como IN_MEDIATION até resolução manual do administrador.",
+                        e
+                );
+            }
+
         }
 
         if (MediationDecision.SELLER_WINS.equals(decision)) {
-
             try {
                 paymentService.transferToSeller(
                         offer.getPixKey(),
@@ -59,9 +71,7 @@ public class MediationService {
                 offer.setTransactionStatus(TransactionStatus.SETTLED);
                 log.info("Mediação da oferta {} resolvida a favor do vendedor. Repasse de {} iniciado.",
                         offerId, offer.getNetAmount());
-
             } catch (Exception e) {
-
                 log.error("Falha ao enviar repasse para o vendedor da oferta {}: {}", offerId, e.getMessage());
                 throw new RuntimeException(
                         "Decision was registered, but the seller transfer failed: " + e.getMessage(), e
