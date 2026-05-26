@@ -3,6 +3,7 @@ package com.lootsafe.service;
 import com.lootsafe.dto.request.OfferUpdateDTO;
 import com.lootsafe.dto.request.OfferRequestDTO;
 import com.lootsafe.dto.response.OfferResponseDTO;
+import com.lootsafe.dto.response.OfferSummaryResponseDTO;
 import com.lootsafe.enums.TransactionStatus;
 import com.lootsafe.exception.ResourceNotFoundException;
 import com.lootsafe.mapper.OfferMapper;
@@ -86,10 +87,10 @@ public class OfferService {
             offer.setPixQrCode(pixData.getQrCodeBase64());
         } catch (MPApiException e) {
             String detail = getMercadoPagoErrorDetail(e);
-            log.error("Erro ao gerar PIX no Mercado Pago. status={} body={}", e.getStatusCode(), detail, e);
+            log.error("Erro ao gerar PIX no Mercado Pago. status={} corpo={}", e.getStatusCode(), detail, e);
             throw new IllegalStateException("Mercado Pago rejected PIX generation: " + detail, e);
         } catch (MPException e) {
-            log.error("Erro de comunicação ao gerar PIX no Mercado Pago: {}", e.getMessage(), e);
+            log.error("Erro de comunicacao ao gerar PIX no Mercado Pago: {}", e.getMessage(), e);
             throw new IllegalStateException("Mercado Pago communication error: " + e.getMessage(), e);
         }
 
@@ -135,7 +136,7 @@ public class OfferService {
                 }
             }
         } catch (Exception e) {
-            log.error("Erro no Webhook ao processar pagamento {}: {}", mercadoPagoPaymentId, e.getMessage(), e);
+            log.error("Erro no webhook ao processar pagamento {}: {}", mercadoPagoPaymentId, e.getMessage(), e);
         }
     }
 
@@ -189,8 +190,8 @@ public class OfferService {
         return offerMapper.toResponseDTO(offerRepository.save(offer));
     }
 
-    public Page<OfferResponseDTO> listAll(Pageable pageable) {
-        return offerRepository.findAll(pageable).map(offerMapper::toResponseDTO);
+    public Page<OfferSummaryResponseDTO> listAll(Pageable pageable) {
+        return offerRepository.findAll(pageable).map(offerMapper::toSummaryResponseDTO);
     }
 
     @Transactional

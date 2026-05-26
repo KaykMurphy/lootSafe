@@ -2,6 +2,7 @@ package com.lootsafe.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lootsafe.enums.PixKeyType;
+import com.lootsafe.exception.PaymentProviderException;
 import com.lootsafe.model.Offer;
 import com.mercadopago.MercadoPagoConfig;
 import com.mercadopago.client.common.IdentificationRequest;
@@ -73,7 +74,7 @@ public class PaymentService {
             String documentType,
             String documentNumber
     ) {
-        boolean isTestCredential = accessToken != null && accessToken.startsWith("TEST-");
+        boolean isTestCredential = isTestCredential();
 
         String firstName = defaultIfBlank(buyerFirstName, isTestCredential ? TEST_PAYER_FIRST_NAME : "Buyer");
         String lastName = defaultIfBlank(buyerLastName, isTestCredential ? TEST_PAYER_LAST_NAME : "LootSafe");
@@ -119,12 +120,33 @@ public class PaymentService {
     }
 
     public PaymentRefund refundPayment(Long id) throws MPException, MPApiException {
+        if (isTestCredential()) {
+            log.info("SIMULACAO: Reembolso Mercado Pago ignorado para credencial TEST-. pagamentoId={}", id);
+            return null;
+        }
+
         MercadoPagoConfig.setAccessToken(accessToken);
         PaymentClient client = new PaymentClient();
-        return client.refund(id);
+        try {
+            return client.refund(id);
+        } catch (MPApiException e) {
+            throw createProviderException("Mercado Pago rejected the refund", e);
+        } catch (MPException e) {
+            throw new PaymentProviderException(
+                    "Mercado Pago communication error while refunding: " + e.getMessage(),
+                    null,
+                    null,
+                    e
+            );
+        }
     }
 
     public void transferToSeller(String pixKey, PixKeyType pixKeyType, BigDecimal amount, UUID offerId) {
+        if (isTestCredential()) {
+            log.info("SIMULACAO: Repasse ao vendedor ignorado para credencial TEST-. ofertaId={} valor={}", offerId, amount);
+            return;
+        }
+
         MercadoPagoConfig.setAccessToken(accessToken);
 
         try {
@@ -153,14 +175,21 @@ public class PaymentService {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                log.info("Transferência Pix enviada para o vendedor da oferta {}", offerId);
+                log.info("Transferencia PIX enviada para o vendedor da oferta {}", offerId);
             } else {
-                throw new RuntimeException("Falha na API do Mercado Pago ao transferir o valor. HTTP " +
-                        response.statusCode() + " - Body: " + response.body());
+                String detail = normalizeDetail(response.body());
+                throw new PaymentProviderException(
+                        "Mercado Pago rejected the seller transfer. HTTP " + response.statusCode() + ": " + detail,
+                        response.statusCode(),
+                        detail,
+                        null
+                );
             }
 
+        } catch (PaymentProviderException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Erro interno ao processar repasse ao vendedor: " + e.getMessage(), e);
+            throw new RuntimeException("Internal error while processing seller transfer: " + e.getMessage(), e);
         }
     }
 
@@ -176,5 +205,24 @@ public class PaymentService {
             case PHONE -> "PHONE";
             default -> "RANDOM";
         };
+    }
+
+    private boolean isTestCredential() {
+        return accessToken != null && accessToken.startsWith("TEST-");
+    }
+
+    private PaymentProviderException createProviderException(String operation, MPApiException e) {
+        String detail = e.getApiResponse() == null ? e.getMessage() : normalizeDetail(e.getApiResponse().getContent());
+        String message = operation + ". HTTP " + e.getStatusCode() + ": " + detail;
+        return new PaymentProviderException(message, e.getStatusCode(), detail, e);
+    }
+
+    private String normalizeDetail(String detail) {
+        if (!StringUtils.hasText(detail)) {
+            return "no details in the response body";
+        }
+
+        String normalized = detail.replaceAll("\\s+", " ").trim();
+        return normalized.length() > 600 ? normalized.substring(0, 600) + "..." : normalized;
     }
 }

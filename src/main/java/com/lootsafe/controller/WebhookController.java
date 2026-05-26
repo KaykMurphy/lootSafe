@@ -36,12 +36,12 @@ public class WebhookController {
             @RequestParam(value = "data.id", required = false) String dataId) {
 
         if (signature == null || requestId == null || dataId == null) {
-            log.warn("Notificacao ignorada: Parametros de seguranca ausentes.");
+            log.warn("Notificacao ignorada: parametros de seguranca ausentes.");
             return ResponseEntity.status(400).build();
         }
 
         taskExecutor.execute(() -> {
-            log.info("Processando webhook em background...");
+            log.info("Processando webhook em segundo plano...");
 
             boolean isValid = WebhookSignatureUtil.isValidWebhook(signature, requestId, dataId, webhookSecret);
 

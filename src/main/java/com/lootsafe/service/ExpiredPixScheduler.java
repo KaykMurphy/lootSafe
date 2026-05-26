@@ -46,7 +46,7 @@ public class ExpiredPixScheduler {
             offer.setTransactionStatus(TransactionStatus.CANCELLED);
             offerRepository.save(offer);
 
-            log.info("Oferta {} cancelada automaticamente pois o PIX expirou.", offer.getId());
+            log.info("Oferta {} cancelada automaticamente porque o pagamento PIX expirou.", offer.getId());
         }
     }
 }

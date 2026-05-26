@@ -49,15 +49,15 @@ public class MediationService {
             try {
                 paymentService.refundPayment(offer.getMercadoPagoPaymentId());
                 offer.setTransactionStatus(TransactionStatus.REFUNDED);
-                log.info("Mediação da oferta {} resolvida a favor do comprador. Reembolso iniciado.", offerId);
+                log.info("Mediacao da oferta {} resolvida a favor do comprador. Reembolso iniciado.", offerId);
             } catch (MPException | MPApiException e) {
                 log.error(
-                        "A mediação foi decidida a favor do comprador, mas o reembolso automático via API falhou. offerId: {}",
+                        "Mediacao decidida a favor do comprador, mas o reembolso automatico via API falhou. ofertaId: {}",
                         offer.getId(),
                         e
                 );
                 throw new RuntimeException(
-                        "Falha no reembolso automático. A oferta permanecerá como IN_MEDIATION até resolução manual do administrador.",
+                        "Automatic refund failed. The offer will remain IN_MEDIATION until manual admin resolution.",
                         e
                 );
             }
@@ -73,7 +73,7 @@ public class MediationService {
                         offer.getId()
                 );
                 offer.setTransactionStatus(TransactionStatus.SETTLED);
-                log.info("Mediação da oferta {} resolvida a favor do vendedor. Repasse de {} iniciado.",
+                log.info("Mediacao da oferta {} resolvida a favor do vendedor. Repasse de {} iniciado.",
                         offerId, offer.getNetAmount());
             } catch (Exception e) {
                 log.error("Falha ao enviar repasse para o vendedor da oferta {}: {}", offerId, e.getMessage());
@@ -108,22 +108,22 @@ public class MediationService {
                 try {
                     paymentService.cancelPix(offer.getMercadoPagoPaymentId());
                 } catch (MPException | MPApiException e) {
-                    log.warn("Falha ao cancelar Pix no MP (provável expiração natural). Ignorando e prosseguindo.");
+                    log.warn("Falha ao cancelar PIX no Mercado Pago (provavel expiracao natural). Ignorando e prosseguindo.");
                 }
             }
             offer.setTransactionStatus(TransactionStatus.CANCELLED);
 
         } else if (currentStatus == TransactionStatus.PAYMENT_HELD || currentStatus == TransactionStatus.IN_MEDIATION) {
             if (!forceRefund) {
-                throw new IllegalStateException("Pagamento já processado. É obrigatório usar forceRefund=true para estornar.");
+                throw new IllegalStateException("Payment has already been processed. forceRefund=true is required to refund it.");
             }
 
             try {
                 paymentService.refundPayment(offer.getMercadoPagoPaymentId());
                 offer.setTransactionStatus(TransactionStatus.REFUNDED);
             } catch (MPException | MPApiException e) {
-                log.error("Falha crítica ao reembolsar valor retido. offerId: {}", offerId, e);
-                throw new RuntimeException("Não foi possível processar o reembolso automático.", e);
+                log.error("Falha critica ao reembolsar valor retido. ofertaId: {}", offerId, e);
+                throw new RuntimeException("Could not process the automatic refund.", e);
             }
         }
 
@@ -158,7 +158,7 @@ public class MediationService {
         TransactionStatus currentStatus = offer.getTransactionStatus();
 
         if (currentStatus != TransactionStatus.IN_MEDIATION) {
-            throw new IllegalStateException("Apenas ofertas em mediação podem ser canceladas pelo comprador");
+            throw new IllegalStateException("Only offers in mediation can be dropped by the buyer.");
         }
 
         try {
@@ -169,11 +169,11 @@ public class MediationService {
                     offer.getId()
             );
 
-            log.info("Comprador desistiu. Repasse de {} para vendedor iniciado.", offer.getNetAmount());
+            log.info("Comprador desistiu da mediacao. Repasse de {} para o vendedor iniciado.", offer.getNetAmount());
             offer.setTransactionStatus(TransactionStatus.SETTLED);
         } catch (Exception e) {
-            log.error("Falha ao enviar repasse para o vendedor após o comprador desistir da mediação. offerId: {}", offerId, e);
-            throw new RuntimeException("Falha no repasse automático. A oferta permanecerá em mediação para resolução manual.", e);
+            log.error("Falha ao enviar repasse para o vendedor apos o comprador desistir da mediacao. ofertaId: {}", offerId, e);
+            throw new RuntimeException("Automatic transfer failed. The offer will remain in mediation for manual resolution.", e);
         }
 
         Offer offerSaved = offerRepository.save(offer);
@@ -197,10 +197,10 @@ public class MediationService {
         if (offer.getBuyerEmail() != null) {
             emailService.sendSimpleEmail(getEmailDetails(offer));
         } else {
-            log.warn("SIMULAÇÃO: Oferta {} não possui buyerEmail definido, e-mail não enviado.", offerId);
+            log.warn("SIMULACAO: Oferta {} nao possui email do comprador definido, e-mail nao enviado.", offerId);
         }
 
-        log.info("SIMULAÇÃO: Pagamento da oferta {} aprovado manualmente para testes.", offerId);
+        log.info("SIMULACAO: Pagamento da oferta {} aprovado manualmente para testes.", offerId);
         return offerMapper.toResponseDTO(savedOffer);
     }
 }
