@@ -1,6 +1,7 @@
 package com.lootsafe.model;
 
 import com.lootsafe.enums.MessageAuthor;
+import com.lootsafe.enums.MessageType;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -20,16 +21,22 @@ public class ChatMessage {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MessageAuthor messageAuthor;
+    private MessageAuthor author;
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MessageType messageType;
 
     private LocalDateTime sentAt;
 
     @PrePersist
     public void onPrePersist() {
-        this.sentAt = LocalDateTime.now();
+        if (this.sentAt == null) {
+            this.sentAt = LocalDateTime.now();
+        }
     }
 
 }
