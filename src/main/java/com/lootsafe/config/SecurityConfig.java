@@ -28,6 +28,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/", "/chat-test.html", "/portfolio/**", "/api/chat/**").permitAll()
                         .requestMatchers("/h2-console/**", "/api/offers/**", "/webhooks/**").permitAll()
                         .requestMatchers("/api/mediation/**").permitAll()
                         .anyRequest().denyAll()

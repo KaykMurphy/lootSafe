@@ -60,4 +60,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_IMPLEMENTED);
     }
 
+    @ExceptionHandler(PaymentProviderException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentProviderException(PaymentProviderException ex) {
+
+        ErrorResponse errorResponse = ErrorResponse.of(
+                ex.getMessage(),
+                "PAYMENT_PROVIDER_ERROR",
+                List.of()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_GATEWAY);
+    }
+
 }
