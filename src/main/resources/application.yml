@@ -35,6 +35,8 @@ spring:
     show-sql: true
 
 logging:
+  file:
+    name: logs/lootsafe.log
   level:
     root: INFO
     com.lootsafe.security.ApiKeyFilter: DEBUG

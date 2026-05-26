@@ -35,3 +35,6 @@ build/
 .env
 
 repomix-output.xml
+
+logs/
+*.log

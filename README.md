@@ -1,21 +1,21 @@
 # LootSafe API
 
-API REST para intermediar transações digitais com pagamento via Pix, retenção do valor até a liberação do produto, mediação em caso de disputa e notificações por webhook do Mercado Pago.
+REST API for intermediating digital transactions with Pix payments, holding funds until product release, handling mediation in disputes, and receiving Mercado Pago webhook notifications.
 
-O projeto foi pensado para fluxos de compra e venda de itens digitais, como contas de jogos, moedas virtuais e outros produtos digitais, mantendo credenciais sensíveis criptografadas no banco de dados.
+The project is designed for buying and selling digital items such as game accounts, virtual currency, and other digital products while keeping sensitive credentials encrypted in the database.
 
-## Principais recursos
+## Main Features
 
-- Criação e gerenciamento de ofertas digitais.
-- Cálculo automático de taxa da plataforma e valor líquido do vendedor.
-- Criptografia AES/GCM para login e senha do produto.
-- Geração de pagamento Pix via Mercado Pago.
-- Processamento assíncrono de webhooks do Mercado Pago.
-- Envio de e-mail ao comprador após aprovação do pagamento.
-- Fluxo de mediação com histórico de mensagens entre comprador, vendedor e moderador.
-- Cancelamento automático de Pix pendentes expirados.
-- Banco H2 em memória para desenvolvimento local.
-- Estrutura preparada para PostgreSQL e Flyway.
+- Digital offer creation and management.
+- Automatic platform fee and seller net amount calculation.
+- AES/GCM encryption for product login and password.
+- Pix payment generation through Mercado Pago.
+- Asynchronous Mercado Pago webhook processing.
+- Buyer email delivery after payment approval.
+- Mediation flow with message history between buyer, seller, and moderator.
+- Automatic cancellation of expired pending Pix payments.
+- In-memory H2 database for local development.
+- PostgreSQL and Flyway-ready structure.
 
 ## Stack
 
@@ -35,73 +35,73 @@ O projeto foi pensado para fluxos de compra e venda de itens digitais, como cont
 - Lombok
 - Mercado Pago Java SDK
 
-## Estrutura do projeto
+## Project Structure
 
 ```text
 src/main/java/com/lootsafe
-├── config          # Configurações de segurança, criptografia e executor async
-├── controller      # Endpoints REST
-├── dto             # Objetos de entrada e saída da API
-├── enums           # Status, categorias e tipos usados no domínio
-├── exception       # Tratamento centralizado de erros
-├── mapper          # Conversões MapStruct
-├── model           # Entidades JPA
-├── repository      # Repositórios e contrato de e-mail
-├── security        # Filtro de API key, criptografia e validação de webhook
-└── service         # Regras de negócio
+|-- config          # Security, encryption, WebSocket, and async executor configuration
+|-- controller      # REST endpoints
+|-- dto             # API request and response objects
+|-- enums           # Domain statuses, categories, and types
+|-- exception       # Centralized error handling
+|-- mapper          # MapStruct conversions
+|-- model           # JPA entities
+|-- repository      # Repositories and email contract
+|-- security        # API key filter, encryption, and webhook validation
+`-- service         # Business rules
 ```
 
-## Requisitos
+## Requirements
 
-- JDK 17 instalado.
-- Maven Wrapper incluído no projeto.
-- Token do Mercado Pago para gerar/cancelar Pix e consultar pagamentos.
-- Senha de aplicativo SMTP para envio de e-mails.
+- JDK 17 installed.
+- Maven Wrapper included in the project.
+- Mercado Pago token to generate/cancel Pix payments and fetch payment details.
+- SMTP app password for sending emails.
 
-## Variáveis de ambiente
+## Environment Variables
 
-A aplicação carrega variáveis a partir do ambiente e também de um arquivo `.env` na raiz do projeto.
+The application loads variables from the environment and from a root `.env` file.
 
-Crie um `.env` local com:
+Create a local `.env` file with:
 
 ```properties
 LOOTSAFE_CRYPTO_KEY=1234567890123456
-LOOTSAFE_ADMIN_API_KEY=troque-esta-chave
-LOOTSAFE_MP_TOKEN=TEST-seu-token-mercado-pago
-SECRET_KEY=seu-segredo-de-webhook
-EMAIL_PASSWORD=sua-senha-de-app-smtp
+LOOTSAFE_ADMIN_API_KEY=replace-this-key
+LOOTSAFE_MP_TOKEN=TEST-your-mercado-pago-token
+SECRET_KEY=your-webhook-secret
+EMAIL_PASSWORD=your-smtp-app-password
 ```
 
-| Variável | Obrigatória | Descrição |
+| Variable | Required | Description |
 | --- | --- | --- |
-| `LOOTSAFE_CRYPTO_KEY` | Sim | Chave AES usada para criptografar credenciais. Deve ter exatamente 16, 24 ou 32 bytes. |
-| `LOOTSAFE_CRYPTO_KEY_APP` | Opcional | Alternativa com prioridade sobre `LOOTSAFE_CRYPTO_KEY`. |
-| `LOOTSAFE_ADMIN_API_KEY` | Sim | Chave exigida no header `X-API-KEY` para rotas administrativas de mediação. |
-| `LOOTSAFE_MP_TOKEN` | Sim | Access token do Mercado Pago. |
-| `SECRET_KEY` | Sim | Segredo usado para validar assinatura dos webhooks do Mercado Pago. |
-| `EMAIL_PASSWORD` | Sim | Senha SMTP usada pelo Spring Mail. |
+| `LOOTSAFE_CRYPTO_KEY` | Yes | AES key used to encrypt credentials. Must have exactly 16, 24, or 32 bytes. |
+| `LOOTSAFE_CRYPTO_KEY_APP` | Optional | Alternative with priority over `LOOTSAFE_CRYPTO_KEY`. |
+| `LOOTSAFE_ADMIN_API_KEY` | Yes | Key required in the `X-API-KEY` header for mediation admin routes. |
+| `LOOTSAFE_MP_TOKEN` | Yes | Mercado Pago access token. |
+| `SECRET_KEY` | Yes | Secret used to validate Mercado Pago webhook signatures. |
+| `EMAIL_PASSWORD` | Yes | SMTP password used by Spring Mail. |
 
-> O arquivo `.env` já está no `.gitignore` e não deve ser versionado.
+> The `.env` file is already listed in `.gitignore` and must not be committed.
 
-## Como executar localmente
+## Running Locally
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-A API sobe por padrão em:
+The API runs by default at:
 
 ```text
 http://localhost:8080
 ```
 
-Console H2 local:
+Local H2 console:
 
 ```text
 http://localhost:8080/h2-console
 ```
 
-Credenciais padrão do H2:
+Default H2 credentials:
 
 ```text
 JDBC URL: jdbc:h2:mem:lootsafedb
@@ -109,162 +109,171 @@ User: sa
 Password: 1234
 ```
 
-## Testes
+## Tests
 
 ```bash
 ./mvnw test
 ```
 
-O teste atual valida a subida do contexto Spring com propriedades de teste para criptografia, API key, webhook e Mercado Pago.
+The current tests validate the Spring context and cover security, API key, webhook, and Mercado Pago test properties.
 
-## Fluxo principal
+## Main Flow
 
-1. O vendedor cria uma oferta informando categoria, descrição, valor, credenciais do produto, e-mail e chave Pix.
-2. A API calcula a taxa da plataforma e o valor líquido do vendedor.
-3. O comprador solicita a geração do Pix para a oferta.
-4. O Mercado Pago envia um webhook quando o pagamento é aprovado.
-5. A API valida a assinatura do webhook, consulta o pagamento e marca a oferta como `PAYMENT_HELD`.
-6. As credenciais são enviadas ao comprador por e-mail e a data limite de liberação é definida.
-7. O pagamento pode ser liberado ao vendedor ou a oferta pode entrar em mediação.
-8. Em mediação, mensagens podem ser trocadas e um moderador decide entre comprador ou vendedor.
+1. The seller creates an offer with category, description, amount, product credentials, email, and Pix key.
+2. The API calculates the platform fee and seller net amount.
+3. The buyer requests Pix generation for the offer.
+4. Mercado Pago sends a webhook when the payment is approved.
+5. The API validates the webhook signature, fetches the payment, and marks the offer as `PAYMENT_HELD`.
+6. The credentials are sent to the buyer by email and the release deadline is set.
+7. The payment can be released to the seller or the offer can enter mediation.
+8. In mediation, messages can be exchanged and a moderator decides in favor of the buyer or seller.
 
-## Status da transação
+## Transaction Statuses
 
-| Status | Significado |
+| Status | Meaning |
 | --- | --- |
-| `PENDING_PAYMENT` | Oferta criada aguardando pagamento. |
-| `PAYMENT_HELD` | Pagamento aprovado e valor retido. |
-| `IN_MEDIATION` | Oferta em disputa. |
-| `SETTLED` | Pagamento liquidado ao vendedor. |
-| `REFUNDED` | Pagamento reembolsado ao comprador. |
-| `CANCELLED` | Oferta cancelada. |
-| `COMPLETED` | Status reservado para conclusão de fluxo. |
+| `PENDING_PAYMENT` | Offer created and waiting for payment. |
+| `PAYMENT_HELD` | Payment approved and funds held. |
+| `IN_MEDIATION` | Offer in dispute. |
+| `SETTLED` | Payment settled to the seller. |
+| `REFUNDED` | Payment refunded to the buyer. |
+| `CANCELLED` | Offer cancelled. |
+| `COMPLETED` | Reserved status for flow completion. |
 
 ## Endpoints
 
-### Ofertas
+### Offers
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 | --- | --- | --- |
-| `POST` | `/api/offers` | Cria uma oferta. |
-| `GET` | `/api/offers` | Lista ofertas com paginação. |
-| `GET` | `/api/offers/{id}` | Busca uma oferta por ID. |
-| `PUT` | `/api/offers/{id}` | Atualiza uma oferta. |
-| `DELETE` | `/api/offers/{id}` | Remove uma oferta quando o status permite. |
-| `POST` | `/api/offers/{id}/generate-pix` | Gera Pix para o comprador. |
-| `POST` | `/api/offers/{id}/release-payment` | Tenta liberar o pagamento ao vendedor. |
-| `POST` | `/api/offers/{id}/mediation` | Abre mediação para uma oferta com pagamento retido. |
-| `POST` | `/api/offers/{id}/messages` | Envia mensagem na mediação. |
-| `GET` | `/api/offers/{id}/messages` | Lista histórico de mensagens da mediação. |
+| `POST` | `/api/offers` | Creates an offer. |
+| `GET` | `/api/offers` | Lists offers with pagination. |
+| `GET` | `/api/offers/{id}` | Gets an offer by ID. |
+| `PUT` | `/api/offers/{id}` | Updates an offer. |
+| `DELETE` | `/api/offers/{id}` | Deletes an offer when its status allows it. |
+| `POST` | `/api/offers/{id}/generate-pix` | Generates Pix for the buyer. |
+| `POST` | `/api/offers/{id}/release-payment` | Tries to release payment to the seller. |
+| `POST` | `/api/offers/{id}/mediation` | Opens mediation for an offer with held payment. |
+| `POST` | `/api/offers/{id}/messages` | Sends a mediation message. |
+| `GET` | `/api/offers/{id}/messages` | Lists the mediation message history. |
 
-### Mediação
+### Chat
 
-As rotas abaixo exigem o header:
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET` | `/api/chat/history` | Lists the latest public chat messages. |
+| `STOMP` | `/app/chat.send` | Sends a public WebSocket chat message. |
+| `STOMP` | `/topic/public` | Public WebSocket chat topic. |
+
+### Mediation
+
+The routes below require this header:
 
 ```text
 X-API-KEY: <LOOTSAFE_ADMIN_API_KEY>
 ```
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 | --- | --- | --- |
-| `GET` | `/api/mediation/offers` | Lista ofertas em mediação. |
-| `GET` | `/api/mediation/offers/all` | Lista todas as ofertas com paginação e ordenação. |
-| `POST` | `/api/mediation/offers/{id}/resolve` | Resolve disputa com `BUYER_WINS` ou `SELLER_WINS`. |
-| `DELETE` | `/api/mediation/offers/{id}/cancel` | Cancela manualmente uma oferta. |
-| `GET` | `/api/mediation/offers/statistics/profit` | Retorna lucro acumulado da plataforma. |
-| `POST` | `/api/mediation/offers/{id}/simulate-payment` | Simula pagamento aprovado para testes locais. |
+| `GET` | `/api/mediation/offers` | Lists offers in mediation. |
+| `GET` | `/api/mediation/offers/all` | Lists all offers with pagination and sorting. |
+| `POST` | `/api/mediation/offers/{id}/resolve` | Resolves a dispute with `BUYER_WINS` or `SELLER_WINS`. |
+| `DELETE` | `/api/mediation/offers/{id}/cancel` | Manually cancels an offer. |
+| `GET` | `/api/mediation/offers/statistics/profit` | Returns accumulated platform profit. |
+| `POST` | `/api/mediation/offers/{id}/simulate-payment` | Simulates an approved payment for local tests. |
 
 ### Webhooks
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 | --- | --- | --- |
-| `POST` | `/webhooks/mercadopago` | Recebe notificações do Mercado Pago. |
+| `POST` | `/webhooks/mercadopago` | Receives Mercado Pago notifications. |
 
-O webhook espera:
+The webhook expects:
 
 - Header `x-signature`
 - Header `x-request-id`
 - Query param `data.id`
-- Corpo JSON com `type = "payment"`
+- JSON body with `type = "payment"`
 
-## Exemplos de uso
+## Usage Examples
 
-### Criar oferta
+### Create Offer
 
 ```bash
 curl -X POST http://localhost:8080/api/offers \
   -H "Content-Type: application/json" \
   -d '{
     "productCategory": "GAME_ACCOUNT",
-    "description": "Conta nível 80 com itens raros",
+    "description": "Level 80 account with rare items",
     "grossAmount": 150.00,
     "trialPeriodHours": 24,
-    "credentialLogin": "login-da-conta",
-    "credentialPassword": "senha-da-conta",
+    "credentialLogin": "account-login",
+    "credentialPassword": "account-password",
     "sellerEmail": "seller@example.com",
     "pixKeyType": "EMAIL",
     "pixKey": "seller@example.com"
   }'
 ```
 
-### Gerar Pix para comprador
+### Generate Pix For Buyer
 
 ```bash
 curl -X POST "http://localhost:8080/api/offers/{offerId}/generate-pix?buyerEmail=buyer@example.com&buyerFirstName=Buyer&buyerLastName=Test"
 ```
 
-### Simular pagamento aprovado em ambiente local
+### Simulate Approved Payment Locally
 
 ```bash
 curl -X POST http://localhost:8080/api/mediation/offers/{offerId}/simulate-payment \
   -H "X-API-KEY: $LOOTSAFE_ADMIN_API_KEY"
 ```
 
-### Abrir mediação
+### Open Mediation
 
 ```bash
 curl -X POST http://localhost:8080/api/offers/{offerId}/mediation
 ```
 
-### Enviar mensagem na mediação
+### Send Mediation Message
 
 ```bash
 curl -X POST http://localhost:8080/api/offers/{offerId}/messages \
   -H "Content-Type: application/json" \
   -d '{
-    "messageAuthor": "BUYER",
-    "messageText": "O produto entregue não corresponde ao anúncio."
+    "author": "BUYER",
+    "messageText": "The delivered product does not match the listing.",
+    "messageType": "CHAT"
   }'
 ```
 
-### Resolver disputa
+### Resolve Dispute
 
 ```bash
 curl -X POST "http://localhost:8080/api/mediation/offers/{offerId}/resolve?decision=BUYER_WINS" \
   -H "X-API-KEY: $LOOTSAFE_ADMIN_API_KEY"
 ```
 
-## Banco de dados
+## Database
 
-O perfil atual usa H2 em memória com `ddl-auto=update`, indicado para desenvolvimento local.
+The current profile uses in-memory H2 with `ddl-auto=update`, intended for local development.
 
-Para produção, recomenda-se:
+For production, configure:
 
-- Configurar PostgreSQL.
-- Habilitar Flyway.
-- Versionar migrations em `src/main/resources/db/migration`.
-- Trocar `spring.jpa.hibernate.ddl-auto` para `validate` ou `none`.
-- Remover credenciais e valores sensíveis do `application.yml`.
+- PostgreSQL.
+- Flyway.
+- Versioned migrations in `src/main/resources/db/migration`.
+- `spring.jpa.hibernate.ddl-auto` as `validate` or `none`.
+- Remove credentials and sensitive values from `application.yml`.
 
-## Observações importantes antes de produção
+## Important Notes Before Production
 
-- O endpoint `/api/mediation/offers/{id}/simulate-payment` está marcado no código como apenas para testes e deve ser removido antes de produção.
-- O repasse automático Pix ao vendedor ainda não está implementado em `PaymentService.transferToSeller`.
-- As rotas de mediação dependem de `X-API-KEY`, mas a política de segurança deve ser revisada antes de expor a API publicamente.
-- O CORS está limitado a `localhost:5173` e `127.0.0.1:5173`.
-- O e-mail remetente está configurado no `application.yml`; para produção, mova também o usuário SMTP para variável de ambiente.
-- Avalie se as credenciais do produto devem aparecer nas respostas da API em todos os cenários.
+- The `/api/mediation/offers/{id}/simulate-payment` endpoint is marked in code as test-only and must be removed before production.
+- Automatic Pix transfer to the seller is not fully implemented in `PaymentService.transferToSeller`.
+- Mediation routes depend on `X-API-KEY`, but the security policy should be reviewed before exposing the API publicly.
+- CORS is limited to `localhost:5173` and `127.0.0.1:5173`.
+- The sender email is configured in `application.yml`; move the SMTP username to an environment variable for production.
+- Review whether product credentials should appear in API responses in every scenario.
 
-## Licença
+## License
 
-Licença ainda não definida.
+License not defined yet.
