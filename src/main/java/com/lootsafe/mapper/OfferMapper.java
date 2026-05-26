@@ -2,6 +2,7 @@ package com.lootsafe.mapper;
 import com.lootsafe.dto.request.OfferUpdateDTO;
 import com.lootsafe.dto.request.OfferRequestDTO;
 import com.lootsafe.dto.response.OfferResponseDTO;
+import com.lootsafe.dto.response.OfferSummaryResponseDTO;
 import com.lootsafe.model.Offer;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -28,6 +29,8 @@ public interface OfferMapper {
     Offer toEntity(OfferRequestDTO dto);
 
     OfferResponseDTO toResponseDTO(Offer entity);
+
+    OfferSummaryResponseDTO toSummaryResponseDTO(Offer entity);
 
     List<OfferResponseDTO> toResponseList(List<Offer> entityList);
 

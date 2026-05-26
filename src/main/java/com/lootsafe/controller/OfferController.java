@@ -5,7 +5,9 @@ import com.lootsafe.dto.request.OfferUpdateDTO;
 import com.lootsafe.dto.request.OfferRequestDTO;
 import com.lootsafe.dto.response.MessageResponseDTO;
 import com.lootsafe.dto.response.OfferResponseDTO;
+import com.lootsafe.dto.response.OfferSummaryResponseDTO;
 import com.lootsafe.service.ChatService;
+import com.lootsafe.service.MediationService;
 import com.lootsafe.service.OfferService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.Valid;
@@ -31,6 +33,7 @@ public class OfferController {
 
     private final OfferService offerService;
     private final ChatService chatService;
+    private final MediationService mediationService;
 
     @PostMapping
     public ResponseEntity<OfferResponseDTO> createOffer(@RequestBody @Valid OfferRequestDTO requestDto) {
@@ -71,7 +74,7 @@ public class OfferController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<OfferResponseDTO>> listAll(
+    public ResponseEntity<Page<OfferSummaryResponseDTO>> listAll(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "5") int size,
             @RequestParam(name = "sortBy", defaultValue = "id") String sortBy
@@ -97,6 +100,12 @@ public class OfferController {
     public ResponseEntity<OfferResponseDTO> openMediation(@PathVariable("id") UUID id) {
         OfferResponseDTO offerInMediation = offerService.openMediation(id);
         return ResponseEntity.ok(offerInMediation);
+    }
+
+    @PostMapping("/{id}/mediation/drop")
+    public ResponseEntity<OfferResponseDTO> dropMediationByBuyer(@PathVariable("id") UUID id) {
+        OfferResponseDTO response = mediationService.dropMediationByBuyer(id);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/messages")
