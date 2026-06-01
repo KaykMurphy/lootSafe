@@ -1,5 +1,9 @@
 # LootSafe API
 
+> Status: pausado temporariamente.
+>
+> Este projeto está funcional em ambiente local, mas o desenvolvimento foi pausado enquanto trabalho em outro projeto.
+
 API REST para intermediar transações digitais com pagamento via Pix, mantendo o valor retido até a liberação do produto, tratando disputas por mediação e recebendo notificações de webhook do Mercado Pago.
 
 O projeto foi pensado para compra e venda de itens digitais, como contas de jogos, moedas virtuais e outros produtos digitais, mantendo credenciais sensíveis criptografadas no banco de dados.
