@@ -1,10 +1,17 @@
 package com.lootsafe;
 
+import com.lootsafe.enums.MessageAuthor;
+import com.lootsafe.enums.MessageType;
 import com.lootsafe.enums.PixKeyType;
 import com.lootsafe.enums.ProductCategory;
+import com.lootsafe.enums.Roles;
 import com.lootsafe.enums.TransactionStatus;
+import com.lootsafe.model.ChatMessage;
 import com.lootsafe.model.Offer;
+import com.lootsafe.model.User;
+import com.lootsafe.repository.ChatMessageRepository;
 import com.lootsafe.repository.OfferRepository;
+import com.lootsafe.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +24,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,13 +48,21 @@ class SecurityAndOfferResponseTests {
     @Autowired
     private OfferRepository offerRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
                 .build();
 
+        chatMessageRepository.deleteAll();
         offerRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
@@ -65,12 +81,33 @@ class SecurityAndOfferResponseTests {
     }
 
     @Test
-    void buyerCanDropMediationThroughPublicOfferRoute() throws Exception {
+    void offerDropRouteRequiresAuthentication() throws Exception {
         Offer offer = createOffer(TransactionStatus.IN_MEDIATION);
 
         mockMvc.perform(post("/api/offers/{id}/mediation/drop", offer.getId()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void buyerCanDropMediationWhenAuthenticated() throws Exception {
+        Offer offer = createOffer(TransactionStatus.IN_MEDIATION);
+        createUser("buyer", "buyer@example.com", Roles.BUYER);
+
+        mockMvc.perform(post("/api/offers/{id}/mediation/drop", offer.getId())
+                        .with(user("buyer").roles("BUYER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.transactionStatus").value("SETTLED"));
+    }
+
+    @Test
+    void nonBuyerCannotDropMediation() throws Exception {
+        Offer offer = createOffer(TransactionStatus.IN_MEDIATION);
+        createUser("other", "other@example.com", Roles.BUYER);
+
+        mockMvc.perform(post("/api/offers/{id}/mediation/drop", offer.getId())
+                        .with(user("other").roles("BUYER")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"));
     }
 
     @Test
@@ -79,6 +116,41 @@ class SecurityAndOfferResponseTests {
 
         mockMvc.perform(post("/api/mediation/offers/{id}/drop", offer.getId()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminDropRouteAcceptsApiKey() throws Exception {
+        Offer offer = createOffer(TransactionStatus.IN_MEDIATION);
+
+        mockMvc.perform(post("/api/mediation/offers/{id}/drop", offer.getId())
+                        .header("X-API-KEY", "test-admin-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionStatus").value("SETTLED"));
+    }
+
+    @Test
+    void buyerCanReadOfferMessageHistory() throws Exception {
+        Offer offer = createOffer(TransactionStatus.IN_MEDIATION);
+        createUser("buyer", "buyer@example.com", Roles.BUYER);
+        createMessage(offer, "Mensagem em mediação");
+
+        mockMvc.perform(get("/api/offers/{id}/messages", offer.getId())
+                        .with(user("buyer").roles("BUYER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].messageText").value("Mensagem em mediação"));
+    }
+
+    @Test
+    void nonParticipantCannotReadOfferMessageHistory() throws Exception {
+        Offer offer = createOffer(TransactionStatus.IN_MEDIATION);
+        createUser("other", "other@example.com", Roles.BUYER);
+        createMessage(offer, "Mensagem em mediação");
+
+        mockMvc.perform(get("/api/offers/{id}/messages", offer.getId())
+                        .with(user("other").roles("BUYER")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"));
     }
 
     @Test
@@ -131,5 +203,27 @@ class SecurityAndOfferResponseTests {
         offer.setPixKey("seller@example.com");
         offer.setMercadoPagoPaymentId(123456789L);
         return offerRepository.save(offer);
+    }
+
+    private User createUser(String name, String email, Roles... roles) {
+        User user = new User();
+        user.setName(name);
+        user.setEmail(email);
+        user.setPassword("password");
+
+        for (Roles role : roles) {
+            user.getRoles().add(role);
+        }
+
+        return userRepository.save(user);
+    }
+
+    private ChatMessage createMessage(Offer offer, String content) {
+        ChatMessage message = new ChatMessage();
+        message.setOffer(offer);
+        message.setAuthor(MessageAuthor.BUYER);
+        message.setContent(content);
+        message.setMessageType(MessageType.CHAT);
+        return chatMessageRepository.save(message);
     }
 }

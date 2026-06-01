@@ -48,7 +48,6 @@ public class SecurityConfig {
                         .requestMatchers("/", "/chat-test.html", "/portfolio/**", "/api/chat/**", "/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/offers").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/offers").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/offers/*/mediation/drop").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/authentication-docs/**").permitAll()

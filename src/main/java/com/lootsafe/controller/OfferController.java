@@ -19,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -84,15 +85,18 @@ public class OfferController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOffer(@PathVariable("id") UUID id) {
-        offerService.deleteOffer(id);
+    public ResponseEntity<Void> deleteOffer(@PathVariable("id") UUID id, Authentication authentication) {
+        String loggedUserIdentifier = authentication.getName();
+        offerService.deleteOffer(id, loggedUserIdentifier);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<OfferResponseDTO> updateOffer(@PathVariable("id") UUID id,
-                                                        @RequestBody @Valid OfferUpdateDTO updateDto) {
-        OfferResponseDTO updatedOffer = offerService.updateOffer(id, updateDto);
+                                                        @RequestBody @Valid OfferUpdateDTO updateDto,
+                                                        Authentication authentication) {
+        String loggedUserIdentifier = authentication.getName();
+        OfferResponseDTO updatedOffer = offerService.updateOffer(id, updateDto, loggedUserIdentifier);
         return ResponseEntity.ok(updatedOffer);
     }
 
@@ -103,8 +107,10 @@ public class OfferController {
     }
 
     @PostMapping("/{id}/mediation/drop")
-    public ResponseEntity<OfferResponseDTO> dropMediationByBuyer(@PathVariable("id") UUID id) {
-        OfferResponseDTO response = mediationService.dropMediationByBuyer(id);
+    public ResponseEntity<OfferResponseDTO> dropMediationByBuyer(@PathVariable("id") UUID id, Authentication authentication) {
+        String loggedUserIdentifier = authentication.getName();
+
+        OfferResponseDTO response = mediationService.dropMediationByBuyer(id, loggedUserIdentifier);
         return ResponseEntity.ok(response);
     }
 
@@ -117,7 +123,8 @@ public class OfferController {
     }
 
     @GetMapping("/{id}/messages")
-    public ResponseEntity<List<MessageResponseDTO>> getMessageHistory(@PathVariable("id") UUID id) {
-        return ResponseEntity.ok(chatService.getMessageHistory(id));
+    public ResponseEntity<List<MessageResponseDTO>> getMessageHistory(@PathVariable("id") UUID id, Authentication authentication) {
+        String loggedUserIdentifier = authentication.getName();
+        return ResponseEntity.ok(chatService.getMessageHistory(id, loggedUserIdentifier));
     }
 }

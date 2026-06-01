@@ -4,25 +4,29 @@ import com.lootsafe.dto.request.OfferUpdateDTO;
 import com.lootsafe.dto.request.OfferRequestDTO;
 import com.lootsafe.dto.response.OfferResponseDTO;
 import com.lootsafe.dto.response.OfferSummaryResponseDTO;
+import com.lootsafe.enums.Roles;
 import com.lootsafe.enums.TransactionStatus;
 import com.lootsafe.exception.ResourceNotFoundException;
 import com.lootsafe.mapper.OfferMapper;
 import com.lootsafe.model.EmailDetails;
 import com.lootsafe.model.Offer;
+import com.lootsafe.model.User;
 import com.lootsafe.repository.EmailService;
 import com.lootsafe.repository.OfferRepository;
+import com.lootsafe.repository.UserRepository;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentPointOfInteraction;
 import com.mercadopago.resources.payment.PaymentTransactionData;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -40,6 +44,7 @@ public class OfferService {
     private final OfferMapper offerMapper;
     private final PaymentService paymentService;
     private final EmailService emailService;
+    private final UserRepository userRepository;
 
     @Value("${lootsafe.platform-fee-rate:0.10}")
     private BigDecimal platformFeeRate;
@@ -155,9 +160,19 @@ public class OfferService {
         offerRepository.save(offer);
     }
 
-    public OfferResponseDTO updateOffer(UUID id, OfferUpdateDTO dto) {
+    public OfferResponseDTO updateOffer(UUID id, OfferUpdateDTO dto, String loggedUserIdentifier) {
         Offer offer = offerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        boolean isOfferOwner = user.getEmail().equals(offer.getSellerEmail());
+        boolean isModerator = user.getRoles().contains(Roles.MODERADOR);
+
+        if (!isModerator && !isOfferOwner) {
+            throw new AccessDeniedException("Você não tem permissão para modificar esta oferta.");
+        }
 
         offerMapper.updateEntityFromDto(dto, offer);
 
@@ -195,9 +210,19 @@ public class OfferService {
     }
 
     @Transactional
-    public void deleteOffer(UUID id) {
+    public void deleteOffer(UUID id, String loggedUserIdentifier) {
         Offer offer = offerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        boolean isModerator = user.getRoles().contains(Roles.MODERADOR);
+        boolean isOfferOwner = user.getEmail().equals(offer.getSellerEmail());
+
+        if (!isModerator && !isOfferOwner) {
+            throw new AccessDeniedException("Você não tem permissão para deletar esta oferta.");
+        }
 
         List<TransactionStatus> blockedStatuses = List.of(
                 TransactionStatus.PAYMENT_HELD,

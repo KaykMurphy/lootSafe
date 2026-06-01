@@ -70,7 +70,7 @@ public class MediationController {
 
     @PostMapping("/{id}/drop")
     public ResponseEntity<OfferResponseDTO> dropMediation(@PathVariable("id") UUID id) {
-        OfferResponseDTO response = mediationService.dropMediationByBuyer(id);
+        OfferResponseDTO response = mediationService.dropMediation(id);
         return ResponseEntity.ok(response);
     }
 

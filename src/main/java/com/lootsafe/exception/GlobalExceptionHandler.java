@@ -1,5 +1,6 @@
 package com.lootsafe.exception;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -46,7 +47,20 @@ public class GlobalExceptionHandler {
                 List.of()
         );
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);    }
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+
+        ErrorResponse errorResponse = ErrorResponse.of(
+                ex.getMessage(),
+                "ACCESS_DENIED",
+                List.of()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+    }
 
     @ExceptionHandler(UnsupportedOperationException.class)
     public ResponseEntity<ErrorResponse> handleUnsupportedOperation(UnsupportedOperationException ex) {

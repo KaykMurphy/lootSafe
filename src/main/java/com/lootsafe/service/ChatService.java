@@ -3,14 +3,18 @@ package com.lootsafe.service;
 import com.lootsafe.dto.request.MessageRequestDTO;
 import com.lootsafe.dto.response.MessageResponseDTO;
 import com.lootsafe.enums.MessageType;
+import com.lootsafe.enums.Roles;
 import com.lootsafe.enums.TransactionStatus;
 import com.lootsafe.exception.ResourceNotFoundException;
 import com.lootsafe.mapper.ChatMessageMapper;
 import com.lootsafe.model.ChatMessage;
 import com.lootsafe.model.Offer;
+import com.lootsafe.model.User;
 import com.lootsafe.repository.ChatMessageRepository;
 import com.lootsafe.repository.OfferRepository;
+import com.lootsafe.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +27,7 @@ public class ChatService {
 
     private final ChatMessageRepository chatMessageRepository;
     private final OfferRepository offerRepository;
+    private final UserRepository userRepository;
     private final ChatMessageMapper chatMessageMapper;
 
     public MessageResponseDTO sendMessage(UUID offerId, MessageRequestDTO dto) {
@@ -58,7 +63,21 @@ public class ChatService {
                 .toList();
     }
 
-    public List<MessageResponseDTO> getMessageHistory(UUID offerId) {
+    public List<MessageResponseDTO> getMessageHistory(UUID offerId, String loggedUserIdentifier) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        boolean isSeller = user.getEmail().equals(offer.getSellerEmail());
+        boolean isBuyer = user.getEmail().equals(offer.getBuyerEmail());
+        boolean isModerator = user.getRoles().contains(Roles.MODERADOR);
+
+        if (!isModerator && !isSeller && !isBuyer) {
+            throw new AccessDeniedException("Você não tem permissão para visualizar as mensagens desta oferta.");
+        }
+
         return chatMessageMapper.toResponseList(chatMessageRepository.findMessageHistory(offerId));
     }
 

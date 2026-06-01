@@ -7,14 +7,17 @@ import com.lootsafe.exception.ResourceNotFoundException;
 import com.lootsafe.mapper.OfferMapper;
 import com.lootsafe.model.EmailDetails;
 import com.lootsafe.model.Offer;
+import com.lootsafe.model.User;
 import com.lootsafe.repository.EmailService;
 import com.lootsafe.repository.OfferRepository;
+import com.lootsafe.repository.UserRepository;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -31,6 +34,7 @@ public class MediationService {
     private final PaymentService paymentService;
     private final OfferMapper offerMapper;
     private final EmailService emailService;
+    private final UserRepository userRepository;
 
     public List<OfferResponseDTO> listOffersInMediation() {
         List<Offer> offers = offerRepository.findAllByTransactionStatus(TransactionStatus.IN_MEDIATION);
@@ -151,10 +155,28 @@ public class MediationService {
         return new EmailDetails(offer.getBuyerEmail(), "LootSafe - Product Released!", body);
     }
 
-    public OfferResponseDTO dropMediationByBuyer(UUID offerId) {
+    public OfferResponseDTO dropMediationByBuyer(UUID offerId, String loggedUserIdentifier) {
         Offer offer = offerRepository.findById(offerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
 
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!user.getEmail().equals(offer.getBuyerEmail())) {
+            throw new AccessDeniedException("Você não tem permissão para cancelar a mediação desta oferta.");
+        }
+
+        return dropMediation(offer);
+    }
+
+    public OfferResponseDTO dropMediation(UUID offerId) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+
+        return dropMediation(offer);
+    }
+
+    private OfferResponseDTO dropMediation(Offer offer) {
         TransactionStatus currentStatus = offer.getTransactionStatus();
 
         if (currentStatus != TransactionStatus.IN_MEDIATION) {
@@ -172,7 +194,7 @@ public class MediationService {
             log.info("Comprador desistiu da mediacao. Repasse de {} para o vendedor iniciado.", offer.getNetAmount());
             offer.setTransactionStatus(TransactionStatus.SETTLED);
         } catch (Exception e) {
-            log.error("Falha ao enviar repasse para o vendedor apos o comprador desistir da mediacao. ofertaId: {}", offerId, e);
+            log.error("Falha ao enviar repasse para o vendedor apos o comprador desistir da mediacao. ofertaId: {}", offer.getId(), e);
             throw new RuntimeException("Automatic transfer failed. The offer will remain in mediation for manual resolution.", e);
         }
 
