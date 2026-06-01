@@ -18,12 +18,5 @@ public record OfferResponseDTO(
         LocalDateTime createdAt,
         LocalDateTime linkExpiresAt,
         LocalDateTime releaseDeadline,
-        Integer trialPeriodHours,
-        String sellerEmail,
-        String pixQrCode,
-        String pixCopyPaste,
-        Long mercadoPagoPaymentId,
-
-        String credentialLogin,
-        String credentialPassword
+        Integer trialPeriodHours
 ) {}
