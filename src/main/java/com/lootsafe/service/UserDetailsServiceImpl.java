@@ -7,7 +7,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-// Aqui está a mágica: importação estática apenas do método builder
 import static org.springframework.security.core.userdetails.User.builder;
 
 @Service
