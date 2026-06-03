@@ -1,6 +1,6 @@
 package com.lootsafe.service;
 
-import com.lootsafe.model.User; // Sua Entidade
+import com.lootsafe.model.User; 
 import com.lootsafe.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
