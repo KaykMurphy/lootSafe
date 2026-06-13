@@ -37,8 +37,14 @@ public class OfferController {
     private final MediationService mediationService;
 
     @PostMapping
-    public ResponseEntity<OfferResponseDTO> createOffer(@RequestBody @Valid OfferRequestDTO requestDto) {
-        OfferResponseDTO response = offerService.createOffer(requestDto);
+    public ResponseEntity<OfferResponseDTO> createOffer(
+            @RequestBody @Valid OfferRequestDTO requestDto, Authentication authentication) {
+
+        String loggedUserIdentifier = authentication.getName();
+
+
+        OfferResponseDTO response = offerService.createOffer(requestDto, loggedUserIdentifier);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -50,7 +56,8 @@ public class OfferController {
             @RequestParam(name = "buyerFirstName", required = false) String buyerFirstName,
             @RequestParam(name = "buyerLastName", required = false) String buyerLastName,
             @RequestParam(name = "documentType", defaultValue = "CPF") String documentType,
-            @RequestParam(name = "documentNumber", required = false) String documentNumber) {
+            @RequestParam(name = "documentNumber", required = false) String documentNumber
+    ) {
         OfferResponseDTO response = offerService.generatePixForBuyer(
                 id,
                 buyerEmail,
@@ -59,18 +66,26 @@ public class OfferController {
                 documentType,
                 documentNumber
         );
+
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<OfferResponseDTO> getOfferById(@PathVariable("id") UUID id) {
+
         OfferResponseDTO response = offerService.getById(id);
+
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/release-payment")
-    public ResponseEntity<OfferResponseDTO> releasePayment(@PathVariable("id") UUID id) {
-        OfferResponseDTO releasedOffer = offerService.releasePayment(id);
+    public ResponseEntity<OfferResponseDTO> releasePayment(@PathVariable("id") UUID id,
+                                                           Authentication authentication ) {
+
+        String loggedUserIdentifier = authentication.getName();
+
+        OfferResponseDTO releasedOffer = offerService.releasePayment(id, loggedUserIdentifier);
+
         return ResponseEntity.ok(releasedOffer);
     }
 
@@ -81,13 +96,17 @@ public class OfferController {
             @RequestParam(name = "sortBy", defaultValue = "id") String sortBy
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+
         return ResponseEntity.ok(offerService.listAll(pageable));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOffer(@PathVariable("id") UUID id, Authentication authentication) {
+
         String loggedUserIdentifier = authentication.getName();
+
         offerService.deleteOffer(id, loggedUserIdentifier);
+
         return ResponseEntity.noContent().build();
     }
 
@@ -95,36 +114,76 @@ public class OfferController {
     public ResponseEntity<OfferResponseDTO> updateOffer(@PathVariable("id") UUID id,
                                                         @RequestBody @Valid OfferUpdateDTO updateDto,
                                                         Authentication authentication) {
+
         String loggedUserIdentifier = authentication.getName();
+
         OfferResponseDTO updatedOffer = offerService.updateOffer(id, updateDto, loggedUserIdentifier);
+
         return ResponseEntity.ok(updatedOffer);
     }
 
     @PostMapping("/{id}/mediation")
-    public ResponseEntity<OfferResponseDTO> openMediation(@PathVariable("id") UUID id) {
-        OfferResponseDTO offerInMediation = offerService.openMediation(id);
+    public ResponseEntity<OfferResponseDTO> openMediation(@PathVariable("id") UUID id,
+                                                          Authentication authentication) {
+
+        String loggedUserIdentifier = authentication.getName();
+
+        OfferResponseDTO offerInMediation = offerService.openMediation(id, loggedUserIdentifier);
+
         return ResponseEntity.ok(offerInMediation);
     }
 
     @PostMapping("/{id}/mediation/drop")
     public ResponseEntity<OfferResponseDTO> dropMediationByBuyer(@PathVariable("id") UUID id, Authentication authentication) {
+
         String loggedUserIdentifier = authentication.getName();
 
         OfferResponseDTO response = mediationService.dropMediationByBuyer(id, loggedUserIdentifier);
+
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/messages")
     public ResponseEntity<MessageResponseDTO> sendMessage(
             @PathVariable("id") UUID id,
-            @RequestBody MessageRequestDTO request) {
-        MessageResponseDTO sentMessage = chatService.sendMessage(id, request);
+            @RequestBody MessageRequestDTO request,
+            Authentication authentication
+    ) {
+
+        String loggedUserIdentifier = authentication.getName();
+
+        MessageResponseDTO sentMessage = chatService.sendMessage(id, request, loggedUserIdentifier);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(sentMessage);
     }
 
     @GetMapping("/{id}/messages")
-    public ResponseEntity<List<MessageResponseDTO>> getMessageHistory(@PathVariable("id") UUID id, Authentication authentication) {
+    public ResponseEntity<List<MessageResponseDTO>> getMessageHistory(@PathVariable("id") UUID id, Authentication authentication)
+    {
         String loggedUserIdentifier = authentication.getName();
+
         return ResponseEntity.ok(chatService.getMessageHistory(id, loggedUserIdentifier));
+    }
+
+    @GetMapping("/my-sales")
+    public ResponseEntity<Page<OfferSummaryResponseDTO>> getMySales(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy,
+            Authentication authentication) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        return ResponseEntity.ok(offerService.listMySales(authentication.getName(), pageable));
+    }
+
+    @GetMapping("/my-purchases")
+    public ResponseEntity<Page<OfferSummaryResponseDTO>> getMyPurchases(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy,
+            Authentication authentication) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        return ResponseEntity.ok(offerService.listMyPurchases(authentication.getName(), pageable));
     }
 }

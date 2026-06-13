@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -35,7 +36,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
+@Slf4g
 @RequiredArgsConstructor
 @Service
 public class OfferService {
@@ -50,9 +51,18 @@ public class OfferService {
     private BigDecimal platformFeeRate;
 
     @Transactional
-    public OfferResponseDTO createOffer(OfferRequestDTO request) {
+    public OfferResponseDTO createOffer(OfferRequestDTO request, String loggedUserIdentifier) {
+
+
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
         Offer offer = offerMapper.toEntity(request);
+
+        offer.setSellerEmail(user.getEmail());
+
         BigDecimal platformFee = request.grossAmount().multiply(platformFeeRate);
+
         offer.setPlatformFee(platformFee);
         offer.setNetAmount(request.grossAmount().subtract(platformFee));
         offer.setTransactionStatus(TransactionStatus.PENDING_PAYMENT);
@@ -186,9 +196,16 @@ public class OfferService {
     }
 
     @Transactional
-    public OfferResponseDTO releasePayment(UUID id) {
+    public OfferResponseDTO releasePayment(UUID id, String loggedUserIdentifier) {
         Offer offer = offerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!user.getEmail().equals(offer.getBuyerEmail())) {
+            throw new AccessDeniedException("Apenas o comprador pode liberar o pagamento ao vendedor.");
+        }
 
         if (offer.getTransactionStatus() != TransactionStatus.PAYMENT_HELD) {
             throw new IllegalStateException("Payment can only be released while it is held.");
@@ -241,9 +258,21 @@ public class OfferService {
     }
 
     @Transactional
-    public OfferResponseDTO openMediation(UUID id) {
+    public OfferResponseDTO openMediation(UUID id, String loggedUserIdentifier) {
+
+
         Offer offer = offerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        boolean isBuyer = user.getEmail().equals(offer.getBuyerEmail());
+        boolean isSeller = user.getEmail().equals(offer.getSellerEmail());
+
+        if (!isBuyer && !isSeller) {
+            throw new AccessDeniedException("Apenas o comprador ou vendedor podem abrir uma mediação nesta oferta.");
+        }
 
         if (offer.getTransactionStatus() != TransactionStatus.PAYMENT_HELD) {
             throw new IllegalStateException("Mediation can only be opened for held payments.");
@@ -269,5 +298,21 @@ public class OfferService {
         return offerRepository.findById(id)
                 .map(offerMapper::toResponseDTO)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
+    }
+
+    public Page<OfferSummaryResponseDTO> listMySales(String loggedUserIdentifier, Pageable pageable) {
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        return offerRepository.findAllBySellerEmail(user.getEmail(), pageable)
+                .map(offerMapper::toSummaryResponseDTO);
+    }
+
+    public Page<OfferSummaryResponseDTO> listMyPurchases(String loggedUserIdentifier, Pageable pageable) {
+        User user = userRepository.findByName(loggedUserIdentifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        return offerRepository.findAllByBuyerEmail(user.getEmail(), pageable)
+                .map(offerMapper::toSummaryResponseDTO);
     }
 }
