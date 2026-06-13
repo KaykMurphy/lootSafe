@@ -46,11 +46,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/chat-test.html", "/portfolio/**", "/api/chat/**", "/error").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/offers").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/offers").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/offers/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/authentication-docs/**").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/authentication-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
