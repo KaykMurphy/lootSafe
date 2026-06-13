@@ -132,8 +132,8 @@ Rotas públicas:
 
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
-- `POST /api/offers`
 - `GET /api/offers`
+- `GET /api/offers/{id}`
 - `/api/chat/**`
 - `/chat-test.html`
 
@@ -210,17 +210,19 @@ A resposta do login contém o token JWT:
 
 | Método | Rota | Autenticação | Descrição |
 | --- | --- | --- | --- |
-| `POST` | `/api/offers` | Pública | Cria uma oferta. |
+| `POST` | `/api/offers` | JWT | Cria uma oferta. O e-mail do vendedor é preenchido automaticamente pelo usuário autenticado. |
 | `GET` | `/api/offers` | Pública | Lista ofertas com paginação. |
-| `GET` | `/api/offers/{id}` | JWT | Busca uma oferta por ID. |
+| `GET` | `/api/offers/{id}` | Pública | Busca uma oferta por ID. |
 | `PUT` | `/api/offers/{id}` | JWT | Atualiza uma oferta. Permitido ao vendedor dono da oferta ou moderador. |
 | `DELETE` | `/api/offers/{id}` | JWT | Remove uma oferta quando o status permite. Permitido ao vendedor dono da oferta ou moderador. |
 | `POST` | `/api/offers/{id}/generate-pix` | JWT | Gera Pix para o comprador. |
-| `POST` | `/api/offers/{id}/release-payment` | JWT | Tenta liberar o pagamento ao vendedor. |
-| `POST` | `/api/offers/{id}/mediation` | JWT | Abre mediação para uma oferta com pagamento retido. |
+| `POST` | `/api/offers/{id}/release-payment` | JWT | Libera o pagamento ao vendedor. Apenas o comprador. |
+| `POST` | `/api/offers/{id}/mediation` | JWT | Abre mediação para uma oferta com pagamento retido. Permitido ao comprador ou vendedor. |
 | `POST` | `/api/offers/{id}/mediation/drop` | JWT | Permite ao comprador desistir da mediação e liberar o repasse ao vendedor. |
-| `POST` | `/api/offers/{id}/messages` | JWT | Envia uma mensagem de mediação. |
+| `POST` | `/api/offers/{id}/messages` | JWT | Envia uma mensagem de mediação. Autor identificado automaticamente (BUYER/SELLER/MODERATOR). |
 | `GET` | `/api/offers/{id}/messages` | JWT | Lista o histórico de mensagens. Permitido ao comprador, vendedor ou moderador da oferta. |
+| `GET` | `/api/offers/my-sales` | JWT | Lista as vendas do usuário autenticado (vendedor) com paginação. |
+| `GET` | `/api/offers/my-purchases` | JWT | Lista as compras do usuário autenticado (comprador) com paginação. |
 
 ### Chat Público
 
@@ -267,6 +269,7 @@ O webhook espera:
 
 ```bash
 curl -X POST http://localhost:8080/api/offers \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "productCategory": "GAME_ACCOUNT",
@@ -275,11 +278,12 @@ curl -X POST http://localhost:8080/api/offers \
     "trialPeriodHours": 24,
     "credentialLogin": "login-da-conta",
     "credentialPassword": "senha-da-conta",
-    "sellerEmail": "vendedor@example.com",
     "pixKeyType": "EMAIL",
     "pixKey": "vendedor@example.com"
   }'
 ```
+
+> O `sellerEmail` é preenchido automaticamente com o e-mail do usuário autenticado.
 
 ### Gerar Pix Para o Comprador
 
