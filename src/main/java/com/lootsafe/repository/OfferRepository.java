@@ -2,6 +2,8 @@ package com.lootsafe.repository;
 
 import com.lootsafe.enums.TransactionStatus;
 import com.lootsafe.model.Offer;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +26,10 @@ public interface OfferRepository extends JpaRepository<Offer, UUID> {
     );
 
     List<Offer> findAllByTransactionStatus(TransactionStatus status);
+
+    Page<Offer> findAllBySellerEmail(String sellerEmail, Pageable pageable);
+
+    Page<Offer> findAllByBuyerEmail(String buyerEmail, Pageable pageable);
 
 
     @Query("SELECT SUM(o.platformFee) FROM Offer o WHERE o.transactionStatus IN :statuses")
