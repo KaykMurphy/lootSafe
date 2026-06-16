@@ -23,13 +23,13 @@ spring:
       path: /h2-console
 
   datasource:
-    url: jdbc:h2:mem:lootsafedb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 1234
+    url: ${DB_URL:jdbc:h2:mem:lootsafedb}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: ${DB_USER:sa}
+    password: ${DB_PASS:1234}
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
     hibernate:
       ddl-auto: update
     show-sql: true
