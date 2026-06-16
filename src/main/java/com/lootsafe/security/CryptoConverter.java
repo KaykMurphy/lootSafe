@@ -26,9 +26,8 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             byte[] iv = new byte[IV_LENGTH_BYTES];
             new SecureRandom().nextBytes(iv);
 
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    CryptoProperties.encryptionKey.getBytes(StandardCharsets.UTF_8), "AES"
-            );
+            byte[] keyBytes = Base64.getDecoder().decode(CryptoProperties.encryptionKey);
+            SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BITS, iv));
@@ -59,9 +58,8 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             byte[] cipherText = new byte[combined.length - IV_LENGTH_BYTES];
             System.arraycopy(combined, IV_LENGTH_BYTES, cipherText, 0, cipherText.length);
 
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    CryptoProperties.encryptionKey.getBytes(StandardCharsets.UTF_8), "AES"
-            );
+            byte[] keyBytes = Base64.getDecoder().decode(CryptoProperties.encryptionKey);
+            SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_LENGTH_BITS, iv));

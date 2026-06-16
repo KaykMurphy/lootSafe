@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Base64;
 import java.util.Set;
 
 @Component
@@ -25,10 +26,10 @@ public class CryptoProperties {
             );
         }
 
-        int keySize = configuredKey.getBytes().length;
-        if (!VALID_AES_KEY_SIZES.contains(keySize)) {
+        byte[] decodedKey = Base64.getDecoder().decode(configuredKey);
+        if (!VALID_AES_KEY_SIZES.contains(decodedKey.length)) {
             throw new IllegalStateException(
-                    "[LootSafe] Invalid AES key size: " + keySize + " bytes. " +
+                    "[LootSafe] Invalid AES key size: " + decodedKey.length + " bytes. " +
                             "The key must be exactly 16, 24, or 32 bytes (128, 192, or 256 bits)."
             );
         }
