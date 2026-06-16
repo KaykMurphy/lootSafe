@@ -36,7 +36,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4g
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class OfferService {

@@ -12,8 +12,8 @@ import com.lootsafe.model.ChatMessage;
 import com.lootsafe.model.Offer;
 import com.lootsafe.model.User;
 import com.lootsafe.repository.ChatMessageRepository;
-import com.lootsafe.repository.OfferRepository
-import com.lootsafe.repository.UserRepository
+import com.lootsafe.repository.OfferRepository;
+import com.lootsafe.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
