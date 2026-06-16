@@ -1,8 +1,6 @@
 # LootSafe API
 
-> Status: pausado temporariamente.
->
-> Este projeto está funcional em ambiente local, mas o desenvolvimento foi pausado enquanto trabalho em outro projeto.
+> Status: em desenvolvimento ativo.
 
 API REST para intermediar transações digitais com pagamento via Pix, mantendo o valor retido até a liberação do produto, tratando disputas por mediação e recebendo notificações de webhook do Mercado Pago.
 
@@ -19,7 +17,8 @@ O projeto foi pensado para compra e venda de itens digitais, como contas de jogo
 - Fluxo de mediação com histórico de mensagens entre comprador, vendedor e moderador.
 - Cancelamento automático de Pix pendentes expirados.
 - Banco H2 em memória para desenvolvimento local.
-- Estrutura preparada para PostgreSQL e Flyway.
+- PostgreSQL via Docker Compose para ambiente conteinerizado.
+- Estrutura preparada para Flyway.
 
 ## Stack
 
@@ -59,6 +58,7 @@ src/main/java/com/lootsafe
 
 - JDK 17 instalado.
 - Maven Wrapper incluso no projeto.
+- Docker e Docker Compose (para ambiente conteinerizado).
 - Token do Mercado Pago para gerar/cancelar Pix e consultar pagamentos.
 - Senha de aplicativo SMTP para envio de e-mails.
 
@@ -78,7 +78,7 @@ EMAIL_PASSWORD=sua-senha-smtp
 
 | Variável | Obrigatória | Descrição |
 | --- | --- | --- |
-| `LOOTSAFE_CRYPTO_KEY` | Sim | Chave AES usada para criptografar credenciais. Deve ter exatamente 16, 24 ou 32 bytes. |
+| `LOOTSAFE_CRYPTO_KEY` | Sim | Chave AES usada para criptografar credenciais. Deve ter exatamente 16, 24 ou 32 bytes **decodificados** (valor em Base64 no `.env`). |
 | `LOOTSAFE_CRYPTO_KEY_APP` | Opcional | Alternativa com prioridade sobre `LOOTSAFE_CRYPTO_KEY`. |
 | `LOOTSAFE_ADMIN_API_KEY` | Sim | Chave exigida no header `X-API-KEY` para rotas administrativas de mediação. |
 | `LOOTSAFE_MP_TOKEN` | Sim | Access token do Mercado Pago. |
@@ -112,6 +112,22 @@ JDBC URL: jdbc:h2:mem:lootsafedb
 Usuário: sa
 Senha: 1234
 ```
+
+## Executando com Docker
+
+```bash
+docker compose up --build -d
+```
+
+A API sobe em `http://localhost:8080` e o PostgreSQL em `localhost:5432`.
+
+Para derrubar:
+
+```bash
+docker compose down
+```
+
+> O Docker Compose sobreescreve as configurações do `application.yml` via variáveis de ambiente, conectando automaticamente ao PostgreSQL do container.
 
 ## Testes
 
@@ -335,8 +351,13 @@ curl -X POST "http://localhost:8080/api/mediation/offers/{offerId}/resolve?decis
 
 ## Banco de Dados
 
-O perfil atual usa H2 em memória com `ddl-auto=update`, pensado para desenvolvimento local.
+### Desenvolvimento local (H2)
+O perfil padrão usa H2 em memória com `ddl-auto=update`, sem necessidade de instalar banco externo.
 
+### Docker (PostgreSQL)
+Ao usar `docker compose up`, a aplicação conecta automaticamente ao PostgreSQL do container.
+
+### Produção
 Para produção, configure:
 
 - PostgreSQL.
