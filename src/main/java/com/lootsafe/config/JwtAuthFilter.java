@@ -15,7 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
@@ -24,7 +24,7 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final UserDetailsServiceImpl userDetailsService;
-    private final JsonMapper jsonMapper;
+    private final ObjectMapper objectMapper;
     private final JwtHelper jwtHelper;
 
 
@@ -85,7 +85,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private String toJson(ApiErrorResponse response) {
         try {
-            return jsonMapper.writeValueAsString(response);
+            return objectMapper.writeValueAsString(response);
         } catch (Exception e) {
             return "";
         }
