@@ -20,6 +20,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -165,15 +167,20 @@ public class OfferController {
         return ResponseEntity.ok(chatService.getMessageHistory(id, loggedUserIdentifier));
     }
 
+
     @GetMapping("/my-sales")
     public ResponseEntity<Page<OfferSummaryResponseDTO>> getMySales(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size,
             @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy,
-            Authentication authentication) {
+            @AuthenticationPrincipal UserDetails user) {
+
+        if (user == null){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
-        return ResponseEntity.ok(offerService.listMySales(authentication.getName(), pageable));
+        return ResponseEntity.ok(offerService.listMySales(user.getUsername(), pageable));
     }
 
     @GetMapping("/my-purchases")
@@ -181,9 +188,13 @@ public class OfferController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size,
             @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy,
-            Authentication authentication) {
+            @AuthenticationPrincipal UserDetails user) {
+
+        if (user == null){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
-        return ResponseEntity.ok(offerService.listMyPurchases(authentication.getName(), pageable));
+        return ResponseEntity.ok(offerService.listMyPurchases(user.getUsername(), pageable));
     }
 }

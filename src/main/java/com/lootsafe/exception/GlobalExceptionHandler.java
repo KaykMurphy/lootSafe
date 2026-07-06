@@ -6,7 +6,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestControllerAdvice
@@ -34,7 +38,17 @@ public class GlobalExceptionHandler {
                 ))
                 .toList();
 
-        ErrorResponse errorResponse = ErrorResponse.of("Validation failed", "VALIDATION_ERROR", fieldErrors);
+        List<FieldErrorResponse> globalErrors = ex.getBindingResult().getGlobalErrors().stream()
+                .map(error -> new FieldErrorResponse(
+                       error.getObjectName(),
+                       error.getDefaultMessage()
+                   ))
+                    .toList();
+
+        List<FieldErrorResponse> allErrors = new ArrayList<>(fieldErrors);
+        allErrors.addAll(globalErrors);
+
+        ErrorResponse errorResponse = ErrorResponse.of("Validation failed", "VALIDATION_ERROR", allErrors);
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
@@ -85,5 +99,39 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_GATEWAY);
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex){
+        ErrorResponse errorResponse = ErrorResponse.of(
+                ex.getMessage(),
+                "DUPLICATE_RESOURCE",
+                List.of()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex){
+        ErrorResponse errorResponse = ErrorResponse.of(
+                "Credenciais inválidas",
+                "INVALID_CREDENTIALS",
+                List.of()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex){
+              ErrorResponse errorResponse = ErrorResponse.of(
+                       "Parâmetro inválido: " + ex.getName() + " — valor '" + ex.getValue() + "' não é válido",
+                       "INVALID_PARAMETER",
+                       List.of()
+               );
+               return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+           }
+
+
 
 }

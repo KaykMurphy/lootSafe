@@ -48,7 +48,7 @@ public class ChatService {
         }
 
         if (offer.getTransactionStatus() != TransactionStatus.IN_MEDIATION) {
-            throw new RuntimeException("Messages are only allowed during active mediation.");
+            throw new IllegalStateException("Messages are only allowed during active mediation.");
         }
 
         ChatMessage chatMessage = chatMessageMapper.toEntity(normalizeMessage(dto));
