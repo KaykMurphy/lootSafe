@@ -43,26 +43,30 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         }
 
         String providedApiKey = request.getHeader("X-API-KEY");
-
-        if (!isValidAdminApiKey(providedApiKey)) {
-            log.warn("Requisicao administrativa negada. metodo={} caminho={}", request.getMethod(), url);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("text/plain;charset=UTF-8");
-            response.getWriter().write("Access denied: invalid API key");
+        if (isValidAdminApiKey(providedApiKey)) {
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        "admin-api-key",
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                );
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+            filterChain.doFilter(request, response);
             return;
         }
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null) {
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    "admin-api-key",
-                    null,
-                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
-            );
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        filterChain.doFilter(request, response);
+        log.warn("Requisicao administrativa negada. metodo={} caminho={}", request.getMethod(), url);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("text/plain;charset=UTF-8");
+        response.getWriter().write("Access denied: provide X-API-KEY or Bearer token");
     }
 
     private boolean isValidAdminApiKey(String providedApiKey) {
