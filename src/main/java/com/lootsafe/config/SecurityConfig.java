@@ -48,11 +48,15 @@ public class SecurityConfig {
                         .requestMatchers("/", "/chat-test.html", "/portfolio/**", "/api/chat/**", "/error").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/offers").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/offers/my-sales").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/offers/my-purchases").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/offers/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/authentication-docs/**").permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login/**").permitAll()
+
+                        .requestMatchers("/webhooks/**").permitAll()
 
                         .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
@@ -69,9 +73,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
+        String corsOrigin = System.getenv("CORS_ORIGIN");
+        List<String> allowedOrigins = new java.util.ArrayList<>(List.of(
+            "http://localhost:5173",
+            "http://127.0.0.1:5173"
+        ));
+        if (corsOrigin != null && !corsOrigin.isBlank()) {
+            allowedOrigins.add(corsOrigin);
+        }
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
