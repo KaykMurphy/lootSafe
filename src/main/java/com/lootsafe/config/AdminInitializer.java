@@ -25,6 +25,9 @@ public class AdminInitializer implements CommandLineRunner {
     @Value("${email_admin}")
     private String emailAdmin;
 
+    @Value("${admin_name}")
+    private String nameAdmin;
+
     @Override
     public void run(String... args) throws Exception {
 
@@ -35,7 +38,7 @@ public class AdminInitializer implements CommandLineRunner {
 
             User user = new User();
             user.setEmail(emailAdmin);
-            user.setName("Admin LOOTSAFE");
+            user.setName(nameAdmin);
             user.setPassword(passwordEncoder.encode(password));
             user.getRoles().add(Roles.MODERADOR);
 
