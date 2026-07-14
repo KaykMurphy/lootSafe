@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: lootsafe-db-dev
+    restart: always
+    environment:
+      POSTGRES_DB: lootsafedb_dev
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_dev_data:

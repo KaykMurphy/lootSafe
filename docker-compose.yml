@@ -6,9 +6,14 @@ services:
     environment:
       POSTGRES_DB: lootsafedb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: rootpassword
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    # Health check: verifica se o PostgreSQL está pronto antes de iniciar a API
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -18,13 +23,16 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    # Espera o banco estar saudável antes de iniciar
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=prod
       - DB_URL=jdbc:postgresql://db:5432/lootsafedb
       - DB_DRIVER=org.postgresql.Driver
       - DB_USER=postgres
-      - DB_PASS=rootpassword
+      - DB_PASS=${DB_PASSWORD}
       - DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
 
       - LOOTSAFE_CRYPTO_KEY=${LOOTSAFE_CRYPTO_KEY}
@@ -33,6 +41,9 @@ services:
       - LOOTSAFE_MP_TOKEN=${LOOTSAFE_MP_TOKEN}
       - SECRET_KEY=${SECRET_KEY}
       - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL_ADMIN=${EMAIL_ADMIN}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=${JWT_EXPIRATION}
       - CORS_ORIGIN=${CORS_ORIGIN}
