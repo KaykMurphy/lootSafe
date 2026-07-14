@@ -57,8 +57,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login/**").permitAll()
 
                         .requestMatchers("/webhooks/**").permitAll()
-
                         .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+
+
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
