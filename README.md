@@ -18,6 +18,8 @@ O projeto foi pensado para compra e venda de itens digitais, como contas de jogo
 - Cancelamento automático de Pix pendentes expirados.
 - Banco H2 em memória para desenvolvimento local.
 - PostgreSQL via Docker Compose para ambiente conteinerizado.
+- Sistema de Spring Profiles (dev, prod) com fail-fast.
+- Spring Boot Actuator para health checks.
 - Estrutura preparada para Flyway.
 
 ## Stack
@@ -30,6 +32,8 @@ O projeto foi pensado para compra e venda de itens digitais, como contas de jogo
 - Spring Validation
 - Spring Mail
 - Spring Scheduling / Async
+- Spring Actuator
+- Spring Profiles
 - Maven Wrapper
 - H2 Database
 - PostgreSQL Driver
@@ -51,69 +55,115 @@ src/main/java/com/lootsafe
 |-- model           # Entidades JPA
 |-- repository      # Repositórios e contrato de e-mail
 |-- security        # API key, criptografia e validação de webhook
-`-- service         # Regras de negócio
+|-- service         # Regras de negócio
+`-- swagger         # Configuração do SpringDoc OpenAPI
 ```
+
+## Spring Profiles
+
+O projeto usa três níveis de configuração via Spring Profiles:
+
+| Profile | Arquivo | Função |
+|---------|---------|--------|
+| **Default** | `application.properties` | Regras fixas (porta, limites, taxa). Fail-fast: sem variáveis de ambiente = crash. |
+| **Dev** | `application-dev.properties` | H2 em memória, logs DEBUG, chaves fixas. Roda sem configurar nada. |
+| **Prod** | `application-prod.properties` | PostgreSQL, variáveis de ambiente obrigatórias, logs WARN, actuator. |
+
+### Como ativar
+
+```bash
+# Dev (local):
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
+
+# Prod (via Docker — já configurado no docker-compose.yml):
+docker compose up -d
+```
+
+## Variáveis de Ambiente
+
+A aplicação carrega variáveis do ambiente e de um arquivo `.env` na raiz do projeto.
+
+Crie um arquivo `.env` local com:
+
+```properties
+# Banco PostgreSQL
+DB_PASSWORD=sua-senha-forte
+
+# JWT
+JWT_SECRET=chave-gerada-com-openssl-rand-base64-32
+JWT_EXPIRATION=60
+
+# Criptografia (chaves Base64 AES-128)
+LOOTSAFE_CRYPTO_KEY=chave-gerada-com-openssl-rand-base64-16
+LOOTSAFE_CRYPTO_KEY_APP=chave-gerada-com-openssl-rand-base64-16
+
+# API Key Admin
+LOOTSAFE_ADMIN_API_KEY=chave-gerada-com-openssl-rand-base64-32
+
+# Mercado Pago
+LOOTSAFE_MP_TOKEN=APP_USR-seu-token-de-producao
+
+# Webhook
+SECRET_KEY=chave-gerada-com-openssl-rand-base64-32
+
+# Email
+EMAIL_PASSWORD=sua-senha-de-app-smtp
+
+# Admin
+ADMIN_PASSWORD=sua-senha-admin
+admin_name=Admin LOOTSAFE
+email_admin=admin@lootsafe.com
+
+# CORS
+CORS_ORIGIN=http://localhost:5173,https://lootsafe.com.br
+```
+
+| Variável | Obrigatória | Descrição |
+| --- | --- | --- |
+| `DB_PASSWORD` | Prod | Senha do PostgreSQL. |
+| `JWT_SECRET` | Sim | Chave para assinar tokens JWT. Gere com `openssl rand -base64 32`. |
+| `JWT_EXPIRATION` | Não | Expiração do JWT em minutos (padrão: 60). |
+| `LOOTSAFE_CRYPTO_KEY` | Sim | Chave AES para criptografar credenciais. Base64 de 16 bytes. |
+| `LOOTSAFE_ADMIN_API_KEY` | Sim | Chave para rotas admin em `/api/mediation/**`. |
+| `LOOTSAFE_MP_TOKEN` | Sim | Access token do Mercado Pago. |
+| `SECRET_KEY` | Sim | Segredo para validar webhooks do Mercado Pago. |
+| `EMAIL_PASSWORD` | Sim | Senha SMTP para envio de e-mails. |
+| `admin_name` | Não | Nome do admin criado automaticamente (padrão: Admin LOOTSAFE). |
+| `email_admin` | Não | Email do admin criado automaticamente. |
+| `ADMIN_PASSWORD` | Não | Senha do admin criado automaticamente. |
+| `CORS_ORIGIN` | Não | Origens permitidas para CORS (separadas por vírgula). |
+
+> O arquivo `.env` está no `.gitignore` e não deve ser commitado.
 
 ## Requisitos
 
-- JDK 17 instalado.
+- JDK 17+ instalado.
 - Maven Wrapper incluso no projeto.
 - Docker e Docker Compose (para ambiente conteinerizado).
 - Token do Mercado Pago para gerar/cancelar Pix e consultar pagamentos.
 - Senha de aplicativo SMTP para envio de e-mails.
 
-## Variáveis de Ambiente
-
-A aplicação carrega variáveis do ambiente e também de um arquivo `.env` na raiz do projeto.
-
-Crie um arquivo `.env` local com:
-
-```properties
-LOOTSAFE_CRYPTO_KEY=1234567890123456
-LOOTSAFE_ADMIN_API_KEY=troque-esta-chave
-LOOTSAFE_MP_TOKEN=TEST-seu-token-do-mercado-pago
-SECRET_KEY=seu-segredo-de-webhook
-EMAIL_PASSWORD=sua-senha-smtp
-```
-
-| Variável | Obrigatória | Descrição |
-| --- | --- | --- |
-| `LOOTSAFE_CRYPTO_KEY` | Sim | Chave AES usada para criptografar credenciais. Deve ter exatamente 16, 24 ou 32 bytes **decodificados** (valor em Base64 no `.env`). |
-| `LOOTSAFE_CRYPTO_KEY_APP` | Opcional | Alternativa com prioridade sobre `LOOTSAFE_CRYPTO_KEY`. |
-| `LOOTSAFE_ADMIN_API_KEY` | Sim | Chave exigida no header `X-API-KEY` para rotas administrativas de mediação. |
-| `LOOTSAFE_MP_TOKEN` | Sim | Access token do Mercado Pago. |
-| `SECRET_KEY` | Sim | Segredo usado para validar assinaturas dos webhooks do Mercado Pago. |
-| `EMAIL_PASSWORD` | Sim | Senha SMTP usada pelo Spring Mail. |
-
-> O arquivo `.env` já está listado no `.gitignore` e não deve ser commitado.
-
 ## Executando Localmente
 
+### Com Docker (banco PostgreSQL)
+
 ```bash
-./mvnw spring-boot:run
+# Subir apenas o banco
+docker compose -f docker-compose.dev.yml up -d
+
+# Rodar a API com profile dev
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
 ```
 
-A API sobe por padrão em:
+### Sem Docker (banco H2 em memória)
 
-```text
-http://localhost:8080
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
 ```
 
-Console local do H2:
+A API sobe em `http://localhost:8080`.
 
-```text
-http://localhost:8080/h2-console
-```
-
-Credenciais padrão do H2:
-
-```text
-JDBC URL: jdbc:h2:mem:lootsafedb
-Usuário: sa
-Senha: 1234
-```
-
-## Executando com Docker
+## Executando com Docker (Produção)
 
 ```bash
 docker compose up --build -d
@@ -127,15 +177,13 @@ Para derrubar:
 docker compose down
 ```
 
-> O Docker Compose sobreescreve as configurações do `application.yml` via variáveis de ambiente, conectando automaticamente ao PostgreSQL do container.
+> O Docker Compose usa `SPRING_PROFILES_ACTIVE=prod` e conecta ao PostgreSQL do container via variáveis de ambiente.
 
 ## Testes
 
 ```bash
 ./mvnw test
 ```
-
-Os testes atuais validam o contexto Spring e cobrem regras de segurança, API key, respostas de oferta e propriedades de teste para webhook e Mercado Pago.
 
 ## Autenticação
 
@@ -150,10 +198,11 @@ Rotas públicas:
 - `POST /api/auth/login`
 - `GET /api/offers`
 - `GET /api/offers/{id}`
-- `/api/chat/**`
-- `/chat-test.html`
+- `GET /api/chat/history`
+- `POST /webhooks/mercadopago`
+- `GET /actuator/health`
 
-As demais rotas exigem JWT ou API key administrativa, dependendo do grupo do endpoint.
+As demais rotas exigem JWT ou API key administrativa.
 
 ### Cadastro e Login
 
@@ -226,45 +275,41 @@ A resposta do login contém o token JWT:
 
 | Método | Rota | Autenticação | Descrição |
 | --- | --- | --- | --- |
-| `POST` | `/api/offers` | JWT | Cria uma oferta. O e-mail do vendedor é preenchido automaticamente pelo usuário autenticado. |
+| `POST` | `/api/offers` | JWT | Cria uma oferta. |
 | `GET` | `/api/offers` | Pública | Lista ofertas com paginação. |
 | `GET` | `/api/offers/{id}` | Pública | Busca uma oferta por ID. |
-| `PUT` | `/api/offers/{id}` | JWT | Atualiza uma oferta. Permitido ao vendedor dono da oferta ou moderador. |
-| `DELETE` | `/api/offers/{id}` | JWT | Remove uma oferta quando o status permite. Permitido ao vendedor dono da oferta ou moderador. |
+| `PUT` | `/api/offers/{id}` | JWT | Atualiza uma oferta (vendedor dono ou moderador). |
+| `DELETE` | `/api/offers/{id}` | JWT | Remove uma oferta (vendedor dono ou moderador). |
 | `POST` | `/api/offers/{id}/generate-pix` | JWT | Gera Pix para o comprador. |
-| `POST` | `/api/offers/{id}/release-payment` | JWT | Libera o pagamento ao vendedor. Apenas o comprador. |
-| `POST` | `/api/offers/{id}/mediation` | JWT | Abre mediação para uma oferta com pagamento retido. Permitido ao comprador ou vendedor. |
-| `POST` | `/api/offers/{id}/mediation/drop` | JWT | Permite ao comprador desistir da mediação e liberar o repasse ao vendedor. |
-| `POST` | `/api/offers/{id}/messages` | JWT | Envia uma mensagem de mediação. Autor identificado automaticamente (BUYER/SELLER/MODERATOR). |
-| `GET` | `/api/offers/{id}/messages` | JWT | Lista o histórico de mensagens. Permitido ao comprador, vendedor ou moderador da oferta. |
-| `GET` | `/api/offers/my-sales` | JWT | Lista as vendas do usuário autenticado (vendedor) com paginação. |
-| `GET` | `/api/offers/my-purchases` | JWT | Lista as compras do usuário autenticado (comprador) com paginação. |
+| `POST` | `/api/offers/{id}/release-payment` | JWT | Libera o pagamento ao vendedor (apenas comprador). |
+| `POST` | `/api/offers/{id}/mediation` | JWT | Abre mediação (comprador ou vendedor). |
+| `POST` | `/api/offers/{id}/mediation/drop` | JWT | Comprador desiste da mediação. |
+| `POST` | `/api/offers/{id}/messages` | JWT | Envia mensagem de mediação. |
+| `GET` | `/api/offers/{id}/messages` | JWT | Lista histórico de mensagens. |
+| `GET` | `/api/offers/my-sales` | JWT | Lista vendas do usuário. |
+| `GET` | `/api/offers/my-purchases` | JWT | Lista compras do usuário. |
 
 ### Chat Público
 
 | Método | Rota | Autenticação | Descrição |
 | --- | --- | --- | --- |
-| `GET` | `/api/chat/history` | Pública | Lista as mensagens mais recentes do chat público. |
-| `STOMP` | `/app/chat.send` | Pública | Envia uma mensagem no chat WebSocket público. |
+| `GET` | `/api/chat/history` | Pública | Lista mensagens mais recentes. |
+| `STOMP` | `/app/chat.send` | Pública | Envia mensagem no chat WebSocket. |
 | `STOMP` | `/topic/public` | Pública | Tópico público do WebSocket. |
 
 ### Mediação Administrativa
 
-As rotas abaixo exigem:
-
-```text
-X-API-KEY: <LOOTSAFE_ADMIN_API_KEY>
-```
+Exige header `X-API-KEY: <LOOTSAFE_ADMIN_API_KEY>`:
 
 | Método | Rota | Descrição |
 | --- | --- | --- |
 | `GET` | `/api/mediation/offers` | Lista ofertas em mediação. |
-| `GET` | `/api/mediation/offers/all` | Lista todas as ofertas com paginação e ordenação. |
-| `POST` | `/api/mediation/offers/{id}/resolve` | Resolve uma disputa com `BUYER_WINS` ou `SELLER_WINS`. |
-| `DELETE` | `/api/mediation/offers/{id}/cancel` | Cancela manualmente uma oferta. |
-| `POST` | `/api/mediation/offers/{id}/drop` | Encerra a mediação e libera o repasse ao vendedor. |
-| `GET` | `/api/mediation/offers/statistics/profit` | Retorna o lucro acumulado da plataforma. |
-| `POST` | `/api/mediation/offers/{id}/simulate-payment` | Simula um pagamento aprovado para testes locais. |
+| `GET` | `/api/mediation/offers/all` | Lista todas as ofertas (paginado). |
+| `POST` | `/api/mediation/offers/{id}/resolve` | Resolve disputa (`BUYER_WINS` ou `SELLER_WINS`). |
+| `DELETE` | `/api/mediation/offers/{id}/cancel` | Cancela oferta manualmente. |
+| `POST` | `/api/mediation/offers/{id}/drop` | Encerra mediação e libera repasse. |
+| `GET` | `/api/mediation/offers/statistics/profit` | Lucro acumulado da plataforma. |
+| `POST` | `/api/mediation/offers/{id}/simulate-payment` | Simula pagamento (apenas testes). |
 
 ### Webhooks
 
@@ -272,12 +317,13 @@ X-API-KEY: <LOOTSAFE_ADMIN_API_KEY>
 | --- | --- | --- |
 | `POST` | `/webhooks/mercadopago` | Recebe notificações do Mercado Pago. |
 
-O webhook espera:
+Espera headers `x-signature`, `x-request-id`, query param `data.id` e body JSON com `type = "payment"`.
 
-- Header `x-signature`
-- Header `x-request-id`
-- Query param `data.id`
-- JSON body com `type = "payment"`
+### Health Check
+
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| `GET` | `/actuator/health` | Status da aplicação (público). |
 
 ## Exemplos de Uso
 
@@ -299,50 +345,14 @@ curl -X POST http://localhost:8080/api/offers \
   }'
 ```
 
-> O `sellerEmail` é preenchido automaticamente com o e-mail do usuário autenticado.
-
-### Gerar Pix Para o Comprador
-
-```bash
-curl -X POST "http://localhost:8080/api/offers/{offerId}/generate-pix?buyerEmail=comprador@example.com&buyerFirstName=Comprador&buyerLastName=Teste" \
-  -H "Authorization: Bearer $JWT_TOKEN"
-```
-
-### Simular Pagamento Aprovado Localmente
+### Simular Pagamento Aprovado
 
 ```bash
 curl -X POST http://localhost:8080/api/mediation/offers/{offerId}/simulate-payment \
   -H "X-API-KEY: $LOOTSAFE_ADMIN_API_KEY"
 ```
 
-### Abrir Mediação
-
-```bash
-curl -X POST http://localhost:8080/api/offers/{offerId}/mediation \
-  -H "Authorization: Bearer $JWT_TOKEN"
-```
-
-### Enviar Mensagem de Mediação
-
-```bash
-curl -X POST http://localhost:8080/api/offers/{offerId}/messages \
-  -H "Authorization: Bearer $JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "author": "BUYER",
-    "messageText": "O produto entregue não corresponde ao anúncio.",
-    "messageType": "CHAT"
-  }'
-```
-
-### Desistir da Mediação Como Comprador
-
-```bash
-curl -X POST http://localhost:8080/api/offers/{offerId}/mediation/drop \
-  -H "Authorization: Bearer $JWT_TOKEN"
-```
-
-### Resolver Disputa Como Administrador
+### Resolver Disputa
 
 ```bash
 curl -X POST "http://localhost:8080/api/mediation/offers/{offerId}/resolve?decision=BUYER_WINS" \
@@ -351,29 +361,37 @@ curl -X POST "http://localhost:8080/api/mediation/offers/{offerId}/resolve?decis
 
 ## Banco de Dados
 
-### Desenvolvimento local (H2)
-O perfil padrão usa H2 em memória com `ddl-auto=update`, sem necessidade de instalar banco externo.
+### Dev (H2)
 
-### Docker (PostgreSQL)
-Ao usar `docker compose up`, a aplicação conecta automaticamente ao PostgreSQL do container.
+Profile `dev`: banco H2 em memória com `ddl-auto=update`. Reset a cada reinício.
 
-### Produção
-Para produção, configure:
+### Dev com Docker (PostgreSQL)
 
-- PostgreSQL.
-- Flyway.
-- Migrations versionadas em `src/main/resources/db/migration`.
-- `spring.jpa.hibernate.ddl-auto` como `validate` ou `none`.
-- Remoção de credenciais e valores sensíveis do `application.yml`.
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
 
-## Observações Antes de Produção
+Banco PostgreSQL em `localhost:5432` com:
+- Database: `lootsafedb_dev`
+- User: `devuser`
+- Password: `devpassword`
 
-- O endpoint `/api/mediation/offers/{id}/simulate-payment` está marcado no código como apenas para testes e deve ser removido antes de produção.
-- A transferência automática de Pix para o vendedor ainda não está plenamente implementada em `PaymentService.transferToSeller`.
-- As rotas administrativas de mediação dependem de `X-API-KEY`; revise a política de segurança antes de expor a API publicamente.
-- O CORS está limitado a `localhost:5173` e `127.0.0.1:5173`.
-- O e-mail remetente está configurado em `application.yml`; mova o usuário SMTP para variável de ambiente antes de produção.
-- As respostas públicas de oferta não expõem credenciais, dados Pix, e-mail do vendedor nem ID de pagamento do Mercado Pago.
+### Prod (PostgreSQL)
+
+`docker compose up -d` sobe PostgreSQL com:
+- Database: `lootsafedb`
+- User: `postgres`
+- Password: via `${DB_PASSWORD}`
+
+Flyway habilitado, `ddl-auto=validate`.
+
+## Observações
+
+- O endpoint `/api/mediation/offers/{id}/simulate-payment` deve ser removido antes de produção.
+- A transferência automática de Pix para o vendedor ainda não está plenamente implementada.
+- O CORS é configurado dinamicamente via `CORS_ORIGIN`.
+- O admin é criado automaticamente no startup via `AdminInitializer`.
+- As respostas públicas de oferta não expõem credenciais, dados Pix ou e-mail do vendedor.
 
 ## Licença
 
